@@ -82,7 +82,7 @@ def extract_vf(header, sequence, slide_limit, primer_size, temp_directory):
     for primer_set in ("forward_primers", "reverse_primers"):
         blast_cmd = ["blastn", "-query", f"{vf_directory}/{primer_set}.fasta", 
                      "-db", f"{temp_directory}/reference.fasta", 
-                     "-outfmt", "6", "-word_size", "20", 
+                     "-outfmt", "6", "-word_size", f"{primer_size}", 
                      "-out", f"{vf_directory}/{primer_set}.blast.txt"]
         subprocess.run(blast_cmd)
 
