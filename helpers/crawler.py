@@ -31,7 +31,7 @@ def crawl(fasta, db_loc, slide_limit, length, identity, primer_size):
             break # TEMPORARY BREAK TODO: REMOVE THIS
 
     # Cleanup temporary environment
-    # cleanup(temp_directory)
+    cleanup(temp_directory)
 
 def setup(fasta, temp_directory):
     # Create temporary directory
@@ -100,7 +100,7 @@ def parse_primer_matches(vf_directory, expected_vf_length):
         forward_matches = forward_matches[forward_matches["qseqid"] == forward_matches["qseqid"][0]]
         # Add information about strand
         forward_matches["strand"] = np.where(forward_matches["sstart"] < forward_matches["send"], "+", "-")
-        print(forward_matches)
+
     # If no matches found, set to null
     else:
         forward_matches = None
@@ -116,7 +116,7 @@ def parse_primer_matches(vf_directory, expected_vf_length):
         reverse_matches = reverse_matches[reverse_matches["qseqid"] == reverse_matches["qseqid"][0]]
         # Add information about strand
         reverse_matches["strand"] = np.where(forward_matches["sstart"] < forward_matches["send"], "+", "-")
-        print(reverse_matches)
+
     # If no matches found, set to null
     else:
         reverse_matches = None
@@ -141,13 +141,42 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
         forward_matches["send"] = forward_matches["send"].astype(int)
         reverse_matches["sstart"] = reverse_matches["sstart"].astype(int)
         reverse_matches["send"] = reverse_matches["send"].astype(int)
+
+        # Store indices before getting merged
+        forward_matches["index"] = forward_matches.index
+        reverse_matches["index"] = reverse_matches.index 
         
         # Merge on sseqid and strand to make sure primers are on correct contig and in correct direction
         pairs = pd.merge(forward_matches, reverse_matches, on=["sseqid", "strand"], suffixes=("_f", "_r"))
 
-        # Calculate distance from expected length to get pruimer pairs
+        # Calculate distance from expected length to get primer pairs distances
         if len(pairs) > 0:
+            # Calculate distances
             pairs["distance"] = abs(abs(pairs["sstart_f"] - pairs["send_r"]) - expected_vf_length)
+            
+            # Sort by distance
+            pairs.sort_values(by="distance", ascending = True, inplace= True)
+
+            # Number of primer pairs to target is the lesser of number of primers identified in forward or reverse direction
+            target_pairs_count = min(len(forward_matches), len(reverse_matches))
+            used_forward = set()
+            used_reverse = set()
+            # Number of pairs identified so far
+            pairs_count = 0
+            # Store pairs
+            primer_pairs_indices = []
+            # Iterate throw each pair by ascending distance
+            for index, row in pairs.iterrows():
+                if pairs_count < target_pairs_count:
+                    # If current smallest distance, and have not used this primer pair, then add it in
+                    if not row["index_f"] in used_forward and not row["index_r"] in used_reverse:
+                        used_forward.add(row["index_f"])
+                        used_reverse.add(row["index_r"])
+                        primer_pairs_indices.append((row["index_f"],row["index_r"]))
+                # If have satisfied target number of primer pairs, then break from loop
+                else:
+                    break
+            return primer_pairs_indices
         # If merged paired dataframe is empty, there are no primer pairs
         else:
             return None
