@@ -122,8 +122,11 @@ def parse_primer_matches(vf_directory, expected_vf_length):
     else:
         reverse_matches = None
 
-    pairs = sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length)
+    primer_pairs, errors = sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length)
 
+    # TODO: Add validation for the primer pairs
+
+    # TODO: Add extraction of the VF sequence
 
 
 def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
@@ -136,13 +139,16 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
     validated in a separate function before finalizing VF call.
 
     Returns:
-    primer_pairs_indices
+    primer_pairs_indices: List of tuples containing indices of the 
+    forward and reverse primers that form pairs
+    errors: List of errors that describes why VF failed to be identified
     """
     # Store pairs as tuples of forward and reverse index
     primer_pairs_indices = []
+    errors = []
     
     # Identify primer pairings where smallest number of primers in one set are paired with primers from other set
-    if forward_matches is not None and reverse_matches is not None:
+    if forward_matches is not None and reverse_matches is not None: 
         # Set positions to integers
         forward_matches["sstart"] = forward_matches["sstart"].astype(int)
         forward_matches["send"] = forward_matches["send"].astype(int)
@@ -182,4 +188,10 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
                 # If have satisfied target number of primer pairs, then break from loop
                 else:
                     break
-    return primer_pairs_indices
+    elif forward_matches is None and reverse_matches is None:
+        errors.append("Both forward and reverse primers were not identified")
+    elif forward_matches is None:
+        errors.append(f"The forward primer was not identified, a reverse primer was found.") # TODO: Add slide amount that identified the found primer
+    elif reverse_matches is None:
+        errors.append(f"The reverse primer was not identified, a forward primer was found.") # TODO: Add slide amount that identified the found primer
+    return primer_pairs_indices, errors
