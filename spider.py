@@ -11,14 +11,14 @@ parser.add_argument("-f", "--fasta",  type=str, required=False, help='Path to FA
 parser.add_argument("-s", "--species",  type=str, required=False, help='Extract a set of particular species from VFDB. Must be supplied in quotation marks such as "Staphylococcus aureus"')
 parser.add_argument("-v", "--virulence_factor", type=str, required=False, help='Search for a specific virulence factor.')
 parser.add_argument("-sl", "--slide_limit", type=float, required=False, default=5, help='Percent length of virulence factor that primers are allowed to slide.')
-parser.add_argument("-pl", "--length", type=float, required=False, default=20, help='Percent length tolerance. Default: 20% (Range of 80-120%)')
-parser.add_argument("-pi", "--identity", type=float, required=False, default=0, help='Percent identity tolerance for calling true match. Anything about this threshold will be called positive hit. Default: 0%')
+parser.add_argument("-pl", "--length", type=float, required=False, default=20, help='Percent length tolerance. Default: 20%% (Range of 80-120%%)')
+parser.add_argument("-pi", "--identity", type=float, required=False, default=0, help='Percent identity tolerance for calling true match. Anything about this threshold will be called positive hit. Default: 0%%')
 parser.add_argument("-p", "--primer_size", type=int, required=False, default=20, help='Length of primer to use. Default: 20bp')
 args = parser.parse_args()
 
 # Print help menu if no arguments supplied
 if len(sys.argv) == 1:
-    parser.print_help(sys.stderr)
+    parser.print_help()
 
 # Print error message if supplied species and virulence factor, but did not supply an assembly
 if not args.fasta and (args.species or args.virulence_factor):
