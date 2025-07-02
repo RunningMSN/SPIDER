@@ -27,8 +27,9 @@ def crawl(fasta, db_loc, slide_limit, length, identity, primer_size):
     with open(db_loc, "r") as database:
         # Load VFs by header and sequence
         for header, sequence in zip(database, database):
+            print(f"Testing {header}")
             extract_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory)
-            break # TEMPORARY BREAK TODO: REMOVE THIS
+            # break # TEMPORARY BREAK TODO: REMOVE THIS
 
     # Cleanup temporary environment
     cleanup(temp_directory)
@@ -115,7 +116,7 @@ def parse_primer_matches(vf_directory, expected_vf_length):
         # Keep only matches for the best primer
         reverse_matches = reverse_matches[reverse_matches["qseqid"] == reverse_matches["qseqid"][0]]
         # Add information about strand
-        reverse_matches["strand"] = np.where(forward_matches["sstart"] < forward_matches["send"], "+", "-")
+        reverse_matches["strand"] = np.where(reverse_matches["sstart"] < reverse_matches["send"], "+", "-")
 
     # If no matches found, set to null
     else:
@@ -133,7 +134,13 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
 
     No validation of these primer matches is performed here. Pairs will be 
     validated in a separate function before finalizing VF call.
+
+    Returns:
+    primer_pairs_indices
     """
+    # Store pairs as tuples of forward and reverse index
+    primer_pairs_indices = []
+    
     # Identify primer pairings where smallest number of primers in one set are paired with primers from other set
     if forward_matches is not None and reverse_matches is not None:
         # Set positions to integers
@@ -163,8 +170,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
             used_reverse = set()
             # Number of pairs identified so far
             pairs_count = 0
-            # Store pairs
-            primer_pairs_indices = []
+            
             # Iterate throw each pair by ascending distance
             for index, row in pairs.iterrows():
                 if pairs_count < target_pairs_count:
@@ -176,7 +182,4 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
                 # If have satisfied target number of primer pairs, then break from loop
                 else:
                     break
-            return primer_pairs_indices
-        # If merged paired dataframe is empty, there are no primer pairs
-        else:
-            return None
+    return primer_pairs_indices
