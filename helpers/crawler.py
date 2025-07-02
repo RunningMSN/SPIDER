@@ -7,6 +7,31 @@ from helpers.settings import blast_columns_fmt_6
 import pandas as pd
 import numpy as np
 
+def crawl(fasta, db_loc, slide_limit, length, identity, primer_size):
+    """
+    Runs SPIDER to identify VFs in the supplied fasta file.
+    """
+    print(f"Beginning to crawl {fasta} using the following settings:")
+    print(f"Primer Size: {primer_size}bp")
+    print(f"Slide Limit: {slide_limit}%")
+    print(f"Length: {length}%")
+    print(f"Identity: {identity}%")
+
+    # Create a temporary directory
+    temp_directory = f"spider_tmp_{uuid.uuid4().hex}"
+
+    # Setup crawler environment
+    setup(fasta, temp_directory)
+
+    # Iterate through all VFs to test
+    with open(db_loc, "r") as database:
+        # Load VFs by header and sequence
+        for header, sequence in zip(database, database):
+            extract_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory)
+            break # TEMPORARY BREAK TODO: REMOVE THIS
+
+    # Cleanup temporary environment
+    # cleanup(temp_directory)
 
 def setup(fasta, temp_directory):
     # Create temporary directory
@@ -27,49 +52,6 @@ def cleanup(temp_directory):
     # Remove temporary directory
     shutil.rmtree(temp_directory)
 
-def parse_primer_matches(vf_directory, expected_vf_length):
-    # Parse the best forward primer match(es)
-    try:
-        # Read forward primer matches
-        forward_matches = pd.read_csv(f"{vf_directory}/forward_primers.blast.txt", sep="\t", header=None, names=blast_columns_fmt_6)
-        forward_matches["qseqid"] = forward_matches["qseqid"].str.replace("forward_", "")
-        # Sort to make sure first primers are kept
-        forward_matches["qseqid"] = forward_matches["qseqid"].astype(int)
-        forward_matches.sort_values(by="qseqid", ascending = True, inplace= True)
-        # Keep only matches for the best primer
-        forward_matches = forward_matches[forward_matches["qseqid"] == forward_matches["qseqid"][0]]
-        # Add information about strand
-        forward_matches["strand"] = np.where(forward_matches["sstart"] < forward_matches["send"], "+", "-")
-        print(forward_matches)
-    # If no matches found, pandas will throw exception
-    except pd.errors.EmptyDataError:
-        forward_matches = None
-    
-    # Parse the best reverse primer match(es)
-    try:
-        # Read reverse primer matches
-        reverse_matches = pd.read_csv(f"{vf_directory}/reverse_primers.blast.txt", sep="\t", header=None, names=blast_columns_fmt_6)
-        reverse_matches["qseqid"] = reverse_matches["qseqid"].str.replace("reverse_", "")
-        # Sort to make sure first primers are kept
-        reverse_matches["qseqid"] = reverse_matches["qseqid"].astype(int)
-        reverse_matches.sort_values(by="qseqid", ascending = True, inplace= True)
-        # Keep only matches for the best primer
-        reverse_matches = reverse_matches[reverse_matches["qseqid"] == reverse_matches["qseqid"][0]]
-        # Add information about strand
-        reverse_matches["strand"] = np.where(forward_matches["sstart"] < forward_matches["send"], "+", "-")
-        print(reverse_matches)
-    # If no matches found, pandas will throw exception
-    except pd.errors.EmptyDataError:
-        reverse_matches = None
-
-    # Identify primer pairings where smallest number of primers in one set are paired with primers from other set
-    # if forward_matches and reverse_matches:
-    #     if len(forward_matches) <= len(reverse_matches):
-    #         smaller, larger = forward_matches.copy(), reverse_matches.copy()
-    #     else:
-    #         smaller, larger = reverse_matches.copy(), forward_matches.copy()
-
-    
 
 def extract_vf(header, sequence, slide_limit, primer_size, temp_directory):
     """
@@ -105,28 +87,67 @@ def extract_vf(header, sequence, slide_limit, primer_size, temp_directory):
 
     parse_primer_matches(vf_directory, len(sequence))
 
-def crawl(fasta, db_loc, slide_limit, length, identity, primer_size):
+
+def parse_primer_matches(vf_directory, expected_vf_length):
+    # Parse the best forward primer match(es)
+    forward_matches = pd.read_csv(f"{vf_directory}/forward_primers.blast.txt", sep="\t", header=None, names=blast_columns_fmt_6)
+    if len(forward_matches) > 0:
+        forward_matches["qseqid"] = forward_matches["qseqid"].str.replace("forward_", "")
+        # Sort to make sure first primers are kept
+        forward_matches["qseqid"] = forward_matches["qseqid"].astype(int)
+        forward_matches.sort_values(by="qseqid", ascending = True, inplace= True)
+        # Keep only matches for the best primer
+        forward_matches = forward_matches[forward_matches["qseqid"] == forward_matches["qseqid"][0]]
+        # Add information about strand
+        forward_matches["strand"] = np.where(forward_matches["sstart"] < forward_matches["send"], "+", "-")
+        print(forward_matches)
+    # If no matches found, set to null
+    else:
+        forward_matches = None
+    
+    # Parse the best reverse primer match(es)
+    reverse_matches = pd.read_csv(f"{vf_directory}/reverse_primers.blast.txt", sep="\t", header=None, names=blast_columns_fmt_6)
+    if len(reverse_matches) > 0:
+        reverse_matches["qseqid"] = reverse_matches["qseqid"].str.replace("reverse_", "")
+        # Sort to make sure first primers are kept
+        reverse_matches["qseqid"] = reverse_matches["qseqid"].astype(int)
+        reverse_matches.sort_values(by="qseqid", ascending = True, inplace= True)
+        # Keep only matches for the best primer
+        reverse_matches = reverse_matches[reverse_matches["qseqid"] == reverse_matches["qseqid"][0]]
+        # Add information about strand
+        reverse_matches["strand"] = np.where(forward_matches["sstart"] < forward_matches["send"], "+", "-")
+        print(reverse_matches)
+    # If no matches found, set to null
+    else:
+        reverse_matches = None
+
+    pairs = sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length)
+
+
+
+def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
     """
-    Runs SPIDER to identify VFs in the supplied fasta file.
+    Identifies primer pairs. The total number of pairs will be whichever 
+    direction primer had less hits. E.g. if forward primer was found once, but
+    reverse was found twice, one pair of primers will be calculated.
+
+    No validation of these primer matches is performed here. Pairs will be 
+    validated in a separate function before finalizing VF call.
     """
-    print(f"Beginning to crawl {fasta} using the following settings:")
-    print(f"Primer Size: {primer_size}bp")
-    print(f"Slide Limit: {slide_limit}%")
-    print(f"Length: {length}%")
-    print(f"Identity: {identity}%")
+    # Identify primer pairings where smallest number of primers in one set are paired with primers from other set
+    if forward_matches is not None and reverse_matches is not None:
+        # Set positions to integers
+        forward_matches["sstart"] = forward_matches["sstart"].astype(int)
+        forward_matches["send"] = forward_matches["send"].astype(int)
+        reverse_matches["sstart"] = reverse_matches["sstart"].astype(int)
+        reverse_matches["send"] = reverse_matches["send"].astype(int)
+        
+        # Merge on sseqid and strand to make sure primers are on correct contig and in correct direction
+        pairs = pd.merge(forward_matches, reverse_matches, on=["sseqid", "strand"], suffixes=("_f", "_r"))
 
-    # Create a temporary directory
-    temp_directory = f"spider_tmp_{uuid.uuid4().hex}"
-
-    # Setup crawler environment
-    setup(fasta, temp_directory)
-
-    # Iterate through all VFs to test
-    with open(db_loc, "r") as database:
-        # Load VFs by header and sequence
-        for header, sequence in zip(database, database):
-            extract_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory)
-            break # TEMPORARY BREAK TODO: REMOVE THIS
-
-    # Cleanup temporary environment
-    cleanup(temp_directory)
+        # Calculate distance from expected length to get pruimer pairs
+        if len(pairs) > 0:
+            pairs["distance"] = abs(abs(pairs["sstart_f"] - pairs["send_r"]) - expected_vf_length)
+        # If merged paired dataframe is empty, there are no primer pairs
+        else:
+            return None
