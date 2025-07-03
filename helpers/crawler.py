@@ -6,6 +6,7 @@ import math
 from helpers.settings import blast_columns_fmt_6
 import pandas as pd
 import numpy as np
+from pyfaidx import Fasta
 
 def crawl(fasta, db_loc, slide_limit, length, identity, primer_size):
     """
@@ -28,7 +29,7 @@ def crawl(fasta, db_loc, slide_limit, length, identity, primer_size):
         # Load VFs by header and sequence
         for header, sequence in zip(database, database):
             print(f"Testing {header}")
-            extract_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory)
+            identify_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory)
             # break # TEMPORARY BREAK TODO: REMOVE THIS
 
     # Cleanup temporary environment
@@ -54,7 +55,7 @@ def cleanup(temp_directory):
     shutil.rmtree(temp_directory)
 
 
-def extract_vf(header, sequence, slide_limit, primer_size, temp_directory):
+def identify_vf(header, sequence, slide_limit, primer_size, temp_directory):
     """
     Identifies the virulence factor if present.
     """
@@ -86,10 +87,10 @@ def extract_vf(header, sequence, slide_limit, primer_size, temp_directory):
                      "-out", f"{vf_directory}/{primer_set}.blast.txt"]
         subprocess.run(blast_cmd)
 
-    parse_primer_matches(vf_directory, len(sequence))
+    parse_primer_matches(vf_directory, len(sequence), temp_directory)
 
 
-def parse_primer_matches(vf_directory, expected_vf_length):
+def parse_primer_matches(vf_directory, expected_vf_length, temp_directory):
     # Parse the best forward primer match(es)
     forward_matches = pd.read_csv(f"{vf_directory}/forward_primers.blast.txt", sep="\t", header=None, names=blast_columns_fmt_6)
     if len(forward_matches) > 0:
@@ -124,6 +125,11 @@ def parse_primer_matches(vf_directory, expected_vf_length):
 
     primer_pairs, errors = sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length)
 
+    for pair in primer_pairs:
+        contig, start, end, strand = extract_vf_location(pair, forward_matches, reverse_matches)
+        extract_vf_sequence(contig, start, end, temp_directory)
+        
+
     # TODO: Add validation for the primer pairs
 
     # TODO: Add extraction of the VF sequence
@@ -139,7 +145,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
     validated in a separate function before finalizing VF call.
 
     Returns:
-    primer_pairs_indices: List of tuples containing indices of the 
+    primer_pairs_indices: List of tuples containing contig and indices of the 
     forward and reverse primers that form pairs
     errors: List of errors that describes why VF failed to be identified
     """
@@ -188,6 +194,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
                 # If have satisfied target number of primer pairs, then break from loop
                 else:
                     break
+
     elif forward_matches is None and reverse_matches is None:
         errors.append("Both forward and reverse primers were not identified")
     elif forward_matches is None:
@@ -195,3 +202,41 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
     elif reverse_matches is None:
         errors.append(f"The reverse primer was not identified, a forward primer was found.") # TODO: Add slide amount that identified the found primer
     return primer_pairs_indices, errors
+
+
+def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches):
+    """
+    Returns the location of the virulence factor given a set of primer pair indices
+    for the forward and reverse BLAST searches.
+
+    Return:
+    contig: Contig on which VF is located
+    start: Start position
+    end: End position
+    strand: +/- strand
+    """
+    # Obtain location of VF
+    contig = forward_matches.iloc[primer_pair_indices[0]]["sseqid"]
+    strand = forward_matches.iloc[primer_pair_indices[0]]["strand"]
+    
+    ## If positive strand then going from sstart to send
+    if strand == "+":
+        # Start position is where primer landed and subtract off primer slide amount
+        start = int(forward_matches.iloc[primer_pair_indices[0]]["sstart"]) - int(forward_matches.iloc[primer_pair_indices[0]]["qseqid"])
+        # End position is where primer landed and add primer slide amount
+        end = int(reverse_matches.iloc[primer_pair_indices[1]]["send"]) + int(reverse_matches.iloc[primer_pair_indices[1]]["qseqid"])
+    # If negative strand, then reverse the direction
+    else:
+        # Start position is where reverse primer landed and add slide amount
+        start = int(reverse_matches.iloc[primer_pair_indices[1]]["send"]) + int(reverse_matches.iloc[primer_pair_indices[1]]["qseqid"])
+        # End position is where forward primer landed, and subtract slide amount
+        end = int(forward_matches.iloc[primer_pair_indices[0]]["sstart"]) - int(forward_matches.iloc[primer_pair_indices[0]]["qseqid"])
+
+    return contig, start, end, strand
+
+def extract_vf_sequence(contig, start, end, temp_directory):
+    genome = Fasta(f"{temp_directory}/reference.fasta")
+    contig = str(contig)
+    # Must subtract 1 base from start since python index at 0 and BLAST coordinate index at 1
+    seq = genome[contig][start-1:end]
+    print(str(seq))
