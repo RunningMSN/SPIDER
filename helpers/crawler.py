@@ -15,7 +15,7 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size)
     Runs SPIDER to identify VFs in the supplied fasta file.
 
     Arguments:
-    
+
     """
     print(f"Beginning to crawl {fasta} using the following settings:")
     print(f"Primer Size: {primer_size}bp")
@@ -117,14 +117,14 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
                 # Extract the VF sequence
                 vf_sequence, vf_length = extract_vf_sequence(contig, start, end, temp_directory)
                 
-                # Validate the VF
-                valid = validate_vf(ref_sequence, vf_sequence, length_limit, identity_limit, strand)
+                # Align the VF to get identity and coverage
+                identity, coverage_percent_length, coverage_alignment = align_vf(ref_sequence, vf_sequence, strand)
 
 
                 
 
-                sequence_output_file.write(f">{vf_extracted_counter}\n{vf_sequence}\n")
-                print(f"{contig}\t{start}\t{end}\t{strand}\tLength: {vf_length}\tExpected Length: {len(vf_sequence)}")
+                # sequence_output_file.write(f">{vf_extracted_counter}\n{vf_sequence}\n")
+                print(f"Contig: {contig}\tStart: {start}\tF Slide: {forward_slide}\tEnd: {end}\tR Slide: {reverse_slide}\t{strand}\tLength: {vf_length}\tExpected Length: {len(ref_sequence)}")
 
 
 def parse_primer_matches(vf_directory, expected_vf_length, temp_directory):
@@ -325,11 +325,32 @@ def align_vf(reference_sequence, vf_sequence, vf_strand):
 
     Returns:
         identity -- Percent identity between VF sequence and reference
-        coverage -- Length of vf_sequence divided by the length of the reference
+        coverage_percent_length -- Length of vf_sequence divided by the length of the reference
+        coverage_alignment -- Alternative coverage metric that ignores gaps. Length of vf_sequence minus gaps divided by length of the reference.
     """
 
+     # Create pairwise alignment of the reference and vf_sequence
+    aligner = PairwiseAligner(scoring="blastn")
+    aligner.mode = 'global'
 
-def validate_vf(reference_sequence, vf_sequence, vf_strand, length_limit, identity_limit):
+    # Reverse complement if - strand
+    if vf_strand == "-":
+        vf_sequence = reverse_complement(vf_sequence)
+
+    # Grab the best alignment
+    alignment = aligner.align(reference_sequence, vf_sequence)[0]
+    # Number of matches is the number of | characters in the printout
+    matches = alignment.format().count("|")
+    # Identity is the number of matches over the total length, multiply by 100 for %
+    identity = matches/alignment.length*100
+    # Simple coverage metric that looks at length discrepency
+    coverage_percent_length = len(vf_sequence)/len(reference_sequence)*100
+    # Alternative coverage metric that does not count gaps
+    coverage_alignment = (len(vf_sequence) - alignment[1].count("-"))/len(reference_sequence)*100
+
+    return identity, coverage_percent_length, coverage_alignment
+
+def validate_vf(reference_sequence, identity, coverage_percent_length, length_limit, identity_limit):
     """
     Validates that a VF meets criteria to be called.
 
@@ -346,21 +367,22 @@ def validate_vf(reference_sequence, vf_sequence, vf_strand, length_limit, identi
 
     Return:
         valid -- True or false if valid or not
-    
+        error -- Reason that VF was not validated
     """
-    # Create pairwise alignment of the reference and vf_sequence
-    aligner = PairwiseAligner()
-    aligner.mode = 'global'
-
-    # Reverse complement if - strand
-    if vf_strand == "-":
-        vf_sequence = reverse_complement(vf_sequence)
-    alignments = aligner.align(reference_sequence, vf_sequence)
-    
-    # TODO: Finish calculating alignment statistics
-
-
-    return True, 0, 0
+    # Check that identity and length limits are met
+    if identity >= identity_limit and coverage_percent_length >= 100 - length_limit and coverage_percent_length <= 100 + length_limit:
+        return True
+    # Identity meets criteria, but not length
+    elif identity >= identity_limit and not (coverage_percent_length >= 100 - length_limit and coverage_percent_length <= 100 + length_limit):
+        error = "Length limit not satisfied."
+        return False
+    # Length meets criteria, but not identity
+    elif coverage_percent_length >= 100 - length_limit and coverage_percent_length <= 100 + length_limit and not identity >= identity_limit:
+        error = "Identity limit not satisfied."
+        return False
+    else:
+        error = "Identity and length limits not satisfied."
+        return False
 
 
 def reverse_complement(sequence):
