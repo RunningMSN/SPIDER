@@ -3,6 +3,7 @@ from helpers.db_functions import download_vfdb, extract_species
 from helpers.crawler import crawl
 import sys
 import os
+import time
 
 # Parse args
 parser = argparse.ArgumentParser(description='Sliding Primer In-silico Detection of Encoded Regions (SPIDER) - Uses in-silico PCR with sequential primers to identify virulence factors')
@@ -10,7 +11,7 @@ parser.add_argument("-d", "--download", action='store_true', help='Downloads a c
 parser.add_argument("-f", "--fasta",  type=str, required=False, help='Path to FASTA file which will be scanned for virulence factors.')
 parser.add_argument("-s", "--species",  type=str, required=False, help='Extract a set of particular species from VFDB. Must be supplied in quotation marks such as "Staphylococcus aureus"')
 parser.add_argument("-v", "--virulence_factor", type=str, required=False, help='Search for a specific virulence factor.')
-parser.add_argument("-sl", "--slide_limit", type=float, required=False, default=5, help='Percent length of virulence factor that primers are allowed to slide.')
+parser.add_argument("-sl", "--slide_limit", type=float, required=False, default=5, help='Percent length of virulence factor that primers are allowed to slide. Default is 5%%.')
 parser.add_argument("-pl", "--length", type=float, required=False, default=20, help='Percent length tolerance. Default: 20%% (Range of 80-120%%)')
 parser.add_argument("-pi", "--identity", type=float, required=False, default=0, help='Percent identity tolerance for calling true match. Anything about this threshold will be called positive hit. Default: 0%%')
 parser.add_argument("-p", "--primer_size", type=int, required=False, default=20, help='Length of primer to use. Default: 20bp')
@@ -68,11 +69,15 @@ if args.fasta:
     else:
         print(f"ERROR: You must supply either the name of a species using -s/--species or a virulence factor using -v/--virulence_factor.")
         sys.exit(1)
+
+    # Track run time
+    start_time = time.time()
     
     # Run the crawler
     crawl(args.fasta, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size)
 
     # Remove DB coby
     os.remove(crawl_db_loc)
-
-    print(f"SPIDER has finished running.")
+    
+    # Print complete message
+    print(f"SPIDER has finished running in {round(time.time() - start_time, 2)} seconds.")
