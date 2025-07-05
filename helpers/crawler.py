@@ -366,11 +366,11 @@ def align_vf(reference_sequence, vf_sequence, vf_strand):
     # Number of matches is the number of | characters in the printout
     matches = alignment.format().count("|")
     # Identity is the number of matches over the total length, multiply by 100 for %
-    identity = matches/alignment.length*100
+    identity = round(matches/alignment.length*100, 2)
     # Simple coverage metric that looks at length discrepency
-    coverage_percent_length = len(vf_sequence)/len(reference_sequence)*100
+    coverage_percent_length = round(len(vf_sequence)/len(reference_sequence)*100, 2)
     # Alternative coverage metric that does not count gaps
-    coverage_alignment = (len(vf_sequence) - alignment[1].count("-"))/len(reference_sequence)*100
+    coverage_alignment = round((len(vf_sequence) - alignment[1].count("-"))/len(reference_sequence)*100, 2)
 
     return identity, coverage_percent_length, coverage_alignment
 
