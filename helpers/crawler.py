@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 import math
-from helpers.settings import blast_columns_fmt_6
+from helpers.settings import BLAST_COLUMNS_FMT_6, RESULTS_COLUMNS
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
@@ -30,14 +30,18 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size)
     setup(fasta, temp_directory)
 
     # Iterate through all VFs to test
+    all_results = []
     with open(db_loc, "r") as database:
         # Load VFs by header and sequence
         for header, sequence in zip(database, database):
             results = identify_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory, length_limit, identity_limit)
             for result in results:
-                result = (header.strip(),) + result
-                print("\t".join(str(x) for x in result))
-
+                # Add header to the result as first item
+                result = (header.strip().replace(">",""),) + result
+                # Append to overall results
+                all_results.append(result)
+    df_results = pd.DataFrame(all_results, columns=RESULTS_COLUMNS)
+    print(df_results)
     # Cleanup temporary environment
     cleanup(temp_directory)
 
@@ -88,7 +92,7 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
 
     Returns:
         results -- List of tuples that contain results. Each tuple is in the format: 
-                   (Valid, Start, F_Slide, End, R_Slide, Strand, Identity, VF_length, 
+                   (Valid, Contig, Start, F_Slide, End, R_Slide, Strand, Identity, VF_length, 
                    Ref_Length, Coverage_Perc_Len, Coverage_Perc_Align, Message)
     """
     # Make directory for the VF
@@ -142,9 +146,9 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
             valid, error = validate_vf(identity, coverage_percent_length, length_limit, identity_limit)
 
             # Add tuple for output: (Valid, Start, F_Slide, End, R_Slide, Strand, Identity, VF_length, Ref_Length, Coverage_Perc_Len, Coverage_Perc_Align, Error Message)
-            results.append((valid, start, forward_slide, end, reverse_slide, strand, identity, vf_length, ref_length, coverage_percent_length, coverage_alignment, error))
+            results.append((valid, contig, start, forward_slide, end, reverse_slide, strand, identity, vf_length, ref_length, coverage_percent_length, coverage_alignment, error))
     else:
-        results.append((False, "NA", "NA", "NA", "NA", "NA", "NA", "NA", ref_length, "NA", "NA", error))
+        results.append((False, "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", ref_length, "NA", "NA", error))
 
     return results
 
@@ -152,7 +156,7 @@ def parse_primer_matches(vf_directory, expected_vf_length, temp_directory):
     """
     """
     # Parse the best forward primer match(es)
-    forward_matches = pd.read_csv(f"{vf_directory}/forward_primers.blast.txt", sep="\t", header=None, names=blast_columns_fmt_6)
+    forward_matches = pd.read_csv(f"{vf_directory}/forward_primers.blast.txt", sep="\t", header=None, names=BLAST_COLUMNS_FMT_6)
     if len(forward_matches) > 0:
         forward_matches["qseqid"] = forward_matches["qseqid"].str.replace("forward_", "")
         # Sort to make sure first primers are kept
@@ -168,7 +172,7 @@ def parse_primer_matches(vf_directory, expected_vf_length, temp_directory):
         forward_matches = None
     
     # Parse the best reverse primer match(es)
-    reverse_matches = pd.read_csv(f"{vf_directory}/reverse_primers.blast.txt", sep="\t", header=None, names=blast_columns_fmt_6)
+    reverse_matches = pd.read_csv(f"{vf_directory}/reverse_primers.blast.txt", sep="\t", header=None, names=BLAST_COLUMNS_FMT_6)
     if len(reverse_matches) > 0:
         reverse_matches["qseqid"] = reverse_matches["qseqid"].str.replace("reverse_", "")
         # Sort to make sure first primers are kept

@@ -7,7 +7,7 @@ VFDB_DATABASE_FILE_NAME = "VFDB_setA_nt.fas.gz"
 # Helpers
 VFDB_LOC = VFDB_FOLDER_NAME + "/" + VFDB_DATABASE_FILE_NAME
 
-blast_columns_fmt_6 = [
+BLAST_COLUMNS_FMT_6 = (
     "qseqid",    # Query sequence ID
     "sseqid",    # Subject (database) sequence ID
     "pident",    # Percentage of identical matches
@@ -20,4 +20,6 @@ blast_columns_fmt_6 = [
     "send",      # End of alignment in subject
     "evalue",    # Expectation value (E-value)
     "bitscore"   # Bit score
-]
+)
+
+RESULTS_COLUMNS = ("Name", "Valid", "Contig", "Start", "F_Slide", "End", "R_Slide", "Strand", "Identity", "VF_length", "Ref_Length", "Coverage_Perc_Len", "Coverage_Perc_Align", "Message")
