@@ -1,5 +1,5 @@
 import argparse
-from helpers.vfdb_functions import download_vfdb, extract_species
+from helpers.db_functions import download_vfdb, extract_species
 from helpers.crawler import crawl
 import sys
 import os
@@ -71,5 +71,8 @@ if args.fasta:
     
     # Run the crawler
     crawl(args.fasta, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size)
+
+    # Remove DB coby
+    os.remove(crawl_db_loc)
 
     print(f"SPIDER has finished running.")
