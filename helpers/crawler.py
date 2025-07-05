@@ -121,9 +121,8 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
                      "-out", f"{vf_directory}/{primer_set}.blast.txt"]
         subprocess.run(blast_cmd)
         
-    # Obtain primer matches'
-    
-    forward_matches, reverse_matches = parse_primer_matches(vf_directory, ref_length, temp_directory)
+    # Obtain primer matches
+    forward_matches, reverse_matches = parse_primer_matches(vf_directory)
     # Sort the primers into pairs
     primer_pairs, error = sort_primer_pairs(forward_matches, reverse_matches, ref_length)
 
@@ -152,8 +151,16 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
 
     return results
 
-def parse_primer_matches(vf_directory, expected_vf_length, temp_directory):
+def parse_primer_matches(vf_directory):
     """
+    Identifies the best primer match for VF.
+
+    Arguments:
+        vf_directory -- Temporary directory being used for the VF
+    
+    Returns:
+        forward_matches - Pandas dataframe with best forward primer matches
+        reverse_matches - Pandas dataframe with best reverse primer matches
     """
     # Parse the best forward primer match(es)
     forward_matches = pd.read_csv(f"{vf_directory}/forward_primers.blast.txt", sep="\t", header=None, names=BLAST_COLUMNS_FMT_6)
