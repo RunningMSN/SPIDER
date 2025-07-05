@@ -33,8 +33,10 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size)
     with open(db_loc, "r") as database:
         # Load VFs by header and sequence
         for header, sequence in zip(database, database):
-            print(f"Testing {header}")
-            identify_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory, length_limit, identity_limit)
+            results = identify_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory, length_limit, identity_limit)
+            for result in results:
+                result = (header.strip(),) + result
+                print("\t".join(str(x) for x in result))
 
     # Cleanup temporary environment
     cleanup(temp_directory)
@@ -74,16 +76,28 @@ def cleanup(temp_directory):
 def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, length_limit, identity_limit):
     """
     Identifies the virulence factor if present.
+
+    Arguments:
+        header -- VF header
+        ref_sequence -- VF reference sequence
+        slide_limit -- User set slide limit for primers
+        primer_size -- User provided primer length
+        temp_directory -- Temporary directory to use
+        length_limit -- User provided limit on length to use
+        identity_limit -- User provided identity limit to use
+
+    Returns:
+        results -- List of tuples that contain results. Each tuple is in the format: 
+                   (Valid, Start, F_Slide, End, R_Slide, Strand, Identity, VF_length, 
+                   Ref_Length, Coverage_Perc_Len, Coverage_Perc_Align, Message)
     """
     # Make directory for the VF
     vf_directory = f"{temp_directory}/{header.split(' ')[0].replace('>','')}"
     os.makedirs(vf_directory)
 
     # Find sequence length for number of primers to generate
-    primer_slide_limit_nt = math.floor(slide_limit / 100 * len(ref_sequence))
-
-    # Number of primers to generate is primer size subtracted from the limit
-    number_primers = primer_slide_limit_nt - primer_size
+    ref_length = len(ref_sequence)
+    number_primers = math.floor(slide_limit / 100 * ref_length)
 
     # Generate the forward primers
     with open(f"{vf_directory}/forward_primers.fasta", "w") as forward_primers:
@@ -93,7 +107,7 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
     # Generate the reverse primers
     with open(f"{vf_directory}/reverse_primers.fasta", "w") as reverse_primers:
         for i in range(0, number_primers):
-            reverse_primers.write(f">reverse_{i}\n{ref_sequence[len(ref_sequence)-i-primer_size:len(ref_sequence)-i]}\n")
+            reverse_primers.write(f">reverse_{i}\n{ref_sequence[ref_length-i-primer_size:ref_length-i]}\n")
 
     # BLAST both sets of primers
     for primer_set in ("forward_primers", "reverse_primers"):
@@ -103,29 +117,36 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
                      "-out", f"{vf_directory}/{primer_set}.blast.txt"]
         subprocess.run(blast_cmd)
         
-    # Obtain primer matches
-    forward_matches, reverse_matches = parse_primer_matches(vf_directory, len(ref_sequence), temp_directory)
+    # Obtain primer matches'
+    
+    forward_matches, reverse_matches = parse_primer_matches(vf_directory, ref_length, temp_directory)
     # Sort the primers into pairs
-    primer_pairs, errors = sort_primer_pairs(forward_matches, reverse_matches, len(ref_sequence))
+    primer_pairs, error = sort_primer_pairs(forward_matches, reverse_matches, ref_length)
+
+    # Store returned output
+    results = []
+
     # Extract VF sequence for each primer pair
     if len(primer_pairs) > 0:
-        with open(f"{vf_directory}/vf_sequences.fasta", "w") as sequence_output_file:
-            vf_extracted_counter = 0
-            for pair in primer_pairs:
-                contig, start, end, strand, forward_slide, reverse_slide = extract_vf_location(pair, forward_matches, reverse_matches)
+        vf_extracted_counter = 0
+        for pair in primer_pairs:
+            contig, start, end, strand, forward_slide, reverse_slide = extract_vf_location(pair, forward_matches, reverse_matches)
 
-                # Extract the VF sequence
-                vf_sequence, vf_length = extract_vf_sequence(contig, start, end, temp_directory)
-                
-                # Align the VF to get identity and coverage
-                identity, coverage_percent_length, coverage_alignment = align_vf(ref_sequence, vf_sequence, strand)
+            # Extract the VF sequence
+            vf_sequence, vf_length = extract_vf_sequence(contig, start, end, temp_directory)
+            
+            # Align the VF to get identity and coverage
+            identity, coverage_percent_length, coverage_alignment = align_vf(ref_sequence, vf_sequence, strand)
+            
+            # Check validity of VF
+            valid, error = validate_vf(identity, coverage_percent_length, length_limit, identity_limit)
 
+            # Add tuple for output: (Valid, Start, F_Slide, End, R_Slide, Strand, Identity, VF_length, Ref_Length, Coverage_Perc_Len, Coverage_Perc_Align, Error Message)
+            results.append((valid, start, forward_slide, end, reverse_slide, strand, identity, vf_length, ref_length, coverage_percent_length, coverage_alignment, error))
+    else:
+        results.append((False, "NA", "NA", "NA", "NA", "NA", "NA", "NA", ref_length, "NA", "NA", error))
 
-                
-
-                # sequence_output_file.write(f">{vf_extracted_counter}\n{vf_sequence}\n")
-                print(f"Contig: {contig}\tStart: {start}\tF Slide: {forward_slide}\tEnd: {end}\tR Slide: {reverse_slide}\t{strand}\tLength: {vf_length}\tExpected Length: {len(ref_sequence)}")
-
+    return results
 
 def parse_primer_matches(vf_directory, expected_vf_length, temp_directory):
     """
@@ -164,13 +185,6 @@ def parse_primer_matches(vf_directory, expected_vf_length, temp_directory):
 
     return forward_matches, reverse_matches
 
-    
-        
-
-    # TODO: Add validation for the primer pairs
-
-    # TODO: Add extraction of the VF sequence
-
 
 def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
     """
@@ -190,11 +204,12 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
     Returns:
         primer_pairs_indices -- List of tuples containing indices of the 
         forward and reverse primers that form pairs
-        errors -- List of errors that describes why VF failed to be identified
+        error -- Reason why VF failed to be identified
     """
     # Store pairs as tuples of forward and reverse index
     primer_pairs_indices = []
-    errors = []
+    # Store error message
+    error = ""
     
     # Identify primer pairings where smallest number of primers in one set are paired with primers from other set
     if forward_matches is not None and reverse_matches is not None: 
@@ -211,13 +226,19 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
         # Merge on sseqid and strand to make sure primers are on correct contig and in correct direction
         pairs = pd.merge(forward_matches, reverse_matches, on=["sseqid", "strand"], suffixes=("_f", "_r"))
 
+        # Filter out bad pairs that are in improper order
+        valid_ordered_pairs = pairs[
+            ((pairs["strand"] == "+") & (pairs["sstart_f"] < pairs["send_r"])) |
+            ((pairs["strand"] == "-") & (pairs["send_r"] < pairs["sstart_f"]))
+        ]
+
         # Calculate distance from expected length to get primer pairs distances
-        if len(pairs) > 0:
+        if len(valid_ordered_pairs) > 0:
             # Calculate distances
-            pairs["distance"] = abs(abs(pairs["sstart_f"] - pairs["send_r"]) - expected_vf_length)
+            valid_ordered_pairs["distance"] = abs(abs(valid_ordered_pairs["sstart_f"] - valid_ordered_pairs["send_r"]) - expected_vf_length)
             
             # Sort by distance
-            pairs.sort_values(by="distance", ascending = True, inplace= True)
+            valid_ordered_pairs.sort_values(by="distance", ascending = True, inplace= True)
 
             # Number of primer pairs to target is the lesser of number of primers identified in forward or reverse direction
             target_pairs_count = min(len(forward_matches), len(reverse_matches))
@@ -227,24 +248,27 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
             pairs_count = 0
             
             # Iterate throw each pair by ascending distance
-            for index, row in pairs.iterrows():
+            for index, row in valid_ordered_pairs.iterrows():
                 if pairs_count < target_pairs_count:
-                    # If current smallest distance, and have not used this primer pair, then add it in
-                    if not row["index_f"] in used_forward and not row["index_r"] in used_reverse:
+                    # If current smallest distance, and have not used this primer pair
+                    if not row["index_f"] in used_forward and not row["index_r"] in used_reverse and row["distance"] > 0:
                         used_forward.add(row["index_f"])
                         used_reverse.add(row["index_r"])
                         primer_pairs_indices.append((row["index_f"],row["index_r"]))
                 # If have satisfied target number of primer pairs, then break from loop
                 else:
                     break
-
+            # Error is empty
+            error = ""
+        elif len(pairs) > 0:
+            error = "Forward and reverse primers were identified, but they were not in the correct order (i.e. F after R or R after F."
     elif forward_matches is None and reverse_matches is None:
-        errors.append("Both forward and reverse primers were not identified")
+        error = "Both forward and reverse primers were not identified"
     elif forward_matches is None:
-        errors.append(f"The forward primer was not identified, a reverse primer was found.") # TODO: Add slide amount that identified the found primer
+        error = f"The forward primer was not identified, a reverse primer was found." # TODO: Add slide amount that identified the found primer
     elif reverse_matches is None:
-        errors.append(f"The reverse primer was not identified, a forward primer was found.") # TODO: Add slide amount that identified the found primer
-    return primer_pairs_indices, errors
+        error = f"The reverse primer was not identified, a forward primer was found." # TODO: Add slide amount that identified the found primer
+    return primer_pairs_indices, error
 
 
 def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches):
@@ -350,7 +374,8 @@ def align_vf(reference_sequence, vf_sequence, vf_strand):
 
     return identity, coverage_percent_length, coverage_alignment
 
-def validate_vf(reference_sequence, identity, coverage_percent_length, length_limit, identity_limit):
+
+def validate_vf(identity, coverage_percent_length, length_limit, identity_limit):
     """
     Validates that a VF meets criteria to be called.
 
@@ -369,21 +394,22 @@ def validate_vf(reference_sequence, identity, coverage_percent_length, length_li
         valid -- True or false if valid or not
         error -- Reason that VF was not validated
     """
+    valid = False
+    error = ""
     # Check that identity and length limits are met
     if identity >= identity_limit and coverage_percent_length >= 100 - length_limit and coverage_percent_length <= 100 + length_limit:
-        return True
+        error = ""
+        valid = True
     # Identity meets criteria, but not length
     elif identity >= identity_limit and not (coverage_percent_length >= 100 - length_limit and coverage_percent_length <= 100 + length_limit):
         error = "Length limit not satisfied."
-        return False
     # Length meets criteria, but not identity
     elif coverage_percent_length >= 100 - length_limit and coverage_percent_length <= 100 + length_limit and not identity >= identity_limit:
         error = "Identity limit not satisfied."
-        return False
     else:
         error = "Identity and length limits not satisfied."
-        return False
-
+    
+    return valid, error
 
 def reverse_complement(sequence):
     """
