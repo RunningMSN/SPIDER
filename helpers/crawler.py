@@ -210,7 +210,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
     primer_pairs_indices = []
     # Store error message
     error = ""
-    
+
     # Identify primer pairings where smallest number of primers in one set are paired with primers from other set
     if forward_matches is not None and reverse_matches is not None: 
         # Set positions to integers
@@ -263,11 +263,11 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
         elif len(pairs) > 0:
             error = "Forward and reverse primers were identified, but they were not in the correct order (i.e. F after R or R after F."
     elif forward_matches is None and reverse_matches is None:
-        error = "Both forward and reverse primers were not identified"
+        error = "Neither forward nor reverse primers were not identified."
     elif forward_matches is None:
-        error = f"The forward primer was not identified, a reverse primer was found." # TODO: Add slide amount that identified the found primer
+        error = f"The forward primer was not identified, a reverse primer was found with slide of {reverse_matches["qseqid"][0]}."
     elif reverse_matches is None:
-        error = f"The reverse primer was not identified, a forward primer was found." # TODO: Add slide amount that identified the found primer
+        error = f"The reverse primer was not identified, a forward primer was found with slide of {forward_matches["qseqid"][0]}."
     return primer_pairs_indices, error
 
 
