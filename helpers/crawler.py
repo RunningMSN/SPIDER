@@ -25,12 +25,6 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size)
     Returns:
         df_results -- Results of crawler in the form of pandas dataframe
     """
-    print(f"Beginning to crawl {fasta} using the following settings:")
-    print(f"Primer Size: {primer_size}bp")
-    print(f"Slide Limit: {slide_limit}%")
-    print(f"Length Limit: {length_limit}%")
-    print(f"Identity Limit: {identity_limit}%")
-
     # Create a temporary directory
     temp_directory = f"spider_tmp_{uuid.uuid4().hex}"
 
@@ -73,7 +67,7 @@ def setup(fasta, temp_directory):
     # Make blast DB for primer lookup
     makeblastdb_cmd = ["makeblastdb", "-in", f"{temp_directory}/reference.fasta", 
                        "-dbtype", "nucl"]
-    subprocess.run(makeblastdb_cmd)
+    subprocess.run(makeblastdb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def cleanup(temp_directory):
@@ -252,7 +246,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
         valid_ordered_pairs = pairs[
             ((pairs["strand"] == "+") & (pairs["sstart_f"] < pairs["send_r"])) |
             ((pairs["strand"] == "-") & (pairs["send_r"] < pairs["sstart_f"]))
-        ]
+        ].copy()
 
         # Calculate distance from expected length to get primer pairs distances
         if len(valid_ordered_pairs) > 0:
