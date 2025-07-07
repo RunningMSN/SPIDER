@@ -15,7 +15,15 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size)
     Runs SPIDER to identify VFs in the supplied fasta file.
 
     Arguments:
+        fasta -- Location of assembly to query
+        db_loc -- Location of target datavase
+        slide_limit -- Percentage of target gene that SPIDER can slide
+        length_limit -- Percentage limit of length for which a VF will validate
+        identity_limit -- Threshold identity at which to call a VF as present
+        primer_size -- Size of primer for in-silico PCR
 
+    Returns:
+        df_results -- Results of crawler in the form of pandas dataframe
     """
     print(f"Beginning to crawl {fasta} using the following settings:")
     print(f"Primer Size: {primer_size}bp")
@@ -37,13 +45,16 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size)
             results = identify_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory, length_limit, identity_limit)
             for result in results:
                 # Add header to the result as first item
-                result = (header.strip().replace(">",""),) + result
+                result = (fasta,header.strip().replace(">",""),) + result
                 # Append to overall results
                 all_results.append(result)
     df_results = pd.DataFrame(all_results, columns=RESULTS_COLUMNS)
-    print(df_results)
+
     # Cleanup temporary environment
     cleanup(temp_directory)
+
+    # Return results
+    return df_results
 
 def setup(fasta, temp_directory):
     """

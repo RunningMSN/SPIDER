@@ -22,4 +22,4 @@ BLAST_COLUMNS_FMT_6 = (
     "bitscore"   # Bit score
 )
 
-RESULTS_COLUMNS = ("Name", "Valid", "Contig", "Start", "F_Slide", "End", "R_Slide", "Strand", "Identity", "VF_length", "Ref_Length", "Coverage_Perc_Len", "Coverage_Perc_Align", "Message")
+RESULTS_COLUMNS = ("Query","Name", "Valid", "Contig", "Start", "F_Slide", "End", "R_Slide", "Strand", "Identity", "VF_length", "Ref_Length", "Coverage_Perc_Len", "Coverage_Perc_Align", "Message")

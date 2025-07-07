@@ -1,14 +1,17 @@
 import argparse
 from helpers.db_functions import download_vfdb, extract_species
 from helpers.crawler import crawl
+from helpers.assembly_list_funcs import parse_list, list_exists
 import sys
 import os
 import time
+import pandas as pd
 
 # Parse args
 parser = argparse.ArgumentParser(description='Sliding Primer In-silico Detection of Encoded Regions (SPIDER) - Uses in-silico PCR with sequential primers to identify virulence factors')
 parser.add_argument("-d", "--download", action='store_true', help='Downloads a current copy of the VFDB.')
 parser.add_argument("-f", "--fasta",  type=str, required=False, help='Path to FASTA file which will be scanned for virulence factors.')
+parser.add_argument("-l", "--list",  type=str, required=False, help='Path to txt file containing a list of paths to FASTA files to identify virulence factors. Each FASTA file should be on a new line.')
 parser.add_argument("-s", "--species",  type=str, required=False, help='Extract a set of particular species from VFDB. Must be supplied in quotation marks such as "Staphylococcus aureus"')
 parser.add_argument("-v", "--virulence_factor", type=str, required=False, help='Search for a specific virulence factor.')
 parser.add_argument("-sl", "--slide_limit", type=float, required=False, default=5, help='Percent length of virulence factor that primers are allowed to slide. Default is 5%%.')
@@ -22,8 +25,8 @@ if len(sys.argv) == 1:
     parser.print_help()
 
 # Print error message if supplied species and virulence factor, but did not supply an assembly
-if not args.fasta and (args.species or args.virulence_factor):
-    print(f"ERROR: An assembly file must be specified to identify virulence factors.")
+if (not args.fasta and not args.list) and (args.species or args.virulence_factor):
+    print(f"ERROR: An assembly file (FASTA) or list of assemblies must be specified to identify virulence factors.")
     sys.exit(1)
 
 # Run download
@@ -32,11 +35,16 @@ if args.download:
     print("Completed download of the current version of the Virulence Factor Database (VFDB).")
 
 # Run SPIDER
-if args.fasta:
+if args.fasta or args.list:
     # Check that assembly file exists
-    if not os.path.exists(args.fasta):
-        print(f"ERROR: Could not find an assembly file located at {args.fasta}")
-        sys.exit(1)
+    if args.fasta:
+        if not os.path.exists(args.fasta):
+            print(f"ERROR: Could not find an assembly file located at {args.fasta}")
+            sys.exit(1)
+    elif args.list:
+        if not os.path.exists(args.list):
+            print(f"ERROR: Could not find assembly list located at {args.list}")
+            sys.exit(1)
 
     # Check for mode to run
     if args.species and args.virulence_factor:
@@ -74,7 +82,24 @@ if args.fasta:
     start_time = time.time()
     
     # Run the crawler
-    crawl(args.fasta, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size)
+    ## Individual assembly
+    if args.fasta:
+        results = crawl(args.fasta, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size)
+    ## List of assemblies
+    elif args.list:
+        # Parse list of assemblies
+        fasta_list = parse_list(args.list)
+        # Check to make sure all assemblies exist, if not exit and warn user
+        valid_list, errors = list_exists(fasta_list)
+        if not valid_list:
+            print(f"ERROR: The following assemblies in the provided list could not be found: {','.join(errors)}")
+            sys.exit(1)
+        # Run crawler
+        all_results = []
+        for assembly in fasta_list:
+            all_results.append(crawl(assembly, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size))
+        results = pd.concat(all_results)
+    print(results)
 
     # Remove DB coby
     os.remove(crawl_db_loc)
