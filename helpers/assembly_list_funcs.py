@@ -24,13 +24,14 @@ def list_exists(list):
         list -- List of assemblies from parse_list function.
 
     Return:
-        True/False -- Returns true if all files in list exist.
+        valid -- Returns true if all files in list exist.
     """
+    valid = True
     errors = []
+    
+    # Check each assembly in list
     for item in list:
         if not os.path.exists(item):
             errors.append(item)
-    if len(errors) > 0:
-        return False, errors
-    else:
-        return True, errors
+            valid = False
+    return valid, errors
