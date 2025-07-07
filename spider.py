@@ -18,6 +18,7 @@ parser.add_argument("-sl", "--slide_limit", type=float, required=False, default=
 parser.add_argument("-pl", "--length", type=float, required=False, default=20, help='Percent length tolerance. Default: 20%% (Range of 80-120%%)')
 parser.add_argument("-pi", "--identity", type=float, required=False, default=0, help='Percent identity tolerance for calling true match. Anything about this threshold will be called positive hit. Default: 0%%')
 parser.add_argument("-p", "--primer_size", type=int, required=False, default=20, help='Length of primer to use. Default: 20bp')
+parser.add_argument("-o", "--output", type=str, required=False, help='Output file as tab-separated values. Default: stdout')
 args = parser.parse_args()
 
 # Print help menu if no arguments supplied
@@ -31,11 +32,17 @@ if (not args.fasta and not args.list) and (args.species or args.virulence_factor
 
 # Run download
 if args.download:
+    print("Beginning to download a current version of the Virulence Factor Database (VFDB).")
     download_vfdb()
-    print("Completed download of the current version of the Virulence Factor Database (VFDB).")
+    print("Download was successfully completed.")
 
 # Run SPIDER
 if args.fasta or args.list:
+    # Check that only one was provided
+    if args.fasta and args.list:
+        print(f"ERROR: Both fasta and list were provided. Please only choose 1.")
+        sys.exit(1)
+
     # Check that assembly file exists
     if args.fasta:
         if not os.path.exists(args.fasta):
@@ -82,6 +89,11 @@ if args.fasta or args.list:
     start_time = time.time()
     
     # Run the crawler
+    print(f"Beginning to crawl using the following settings:")
+    print(f"Primer Size: {args.primer_size}bp")
+    print(f"Slide Limit: {args.slide_limit}%")
+    print(f"Length Limit: {args.length}%")
+    print(f"Identity Limit: {args.identity}%")
     ## Individual assembly
     if args.fasta:
         results = crawl(args.fasta, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size)
@@ -98,9 +110,16 @@ if args.fasta or args.list:
         all_results = []
         for assembly in fasta_list:
             all_results.append(crawl(assembly, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size))
-        results = pd.concat(all_results)
-    print(results)
+        results = pd.concat(all_results, ignore_index=True)
 
+    # Output results
+    ## If no file selected, print to stdout
+    if not args.output:
+        print(results.to_csv(sep="\t", index=None))
+    ## Print to output file
+    else:
+        results.to_csv(args.output, sep="\t", index=None)
+    
     # Remove DB coby
     os.remove(crawl_db_loc)
     
