@@ -19,13 +19,11 @@ To test for species-wide virulence factors on a single assembly, the following c
 
 ## Testing a list of assemblies for a virulence factor
 To test multiple assemblies, create a text file with a list. Each assembly should be on a new line.
-``
+```
 assembly_1.fasta
-
 assembly_2.fasta
-
 ...
-``
+```
 
 Run SPIDER on the list using the following command.
 `python spider.py -l list.txt -v [virulence_factor]`
