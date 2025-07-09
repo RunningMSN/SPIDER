@@ -3,6 +3,7 @@ import os
 from urllib.request import urlretrieve
 import gzip
 import sys
+import uuid
 
 def download_vfdb():
     """
@@ -34,8 +35,8 @@ def extract_species(species):
     facilitate easier parsing later.
 
     Returns:
-    count: Number of VFs belonging to the species
-    db_loc: Location of the output database
+        count -- Number of VFs belonging to the species
+        db_loc -- Location of the output database
     """
     # Make sure the base database exists first
     if not check_downloaded():
@@ -71,3 +72,41 @@ def extract_species(species):
                         output.write(line.strip())
 
     return count, output_loc
+
+def open_correct_format(file):
+    if file.endswith(".gz"):
+        return gzip.open(file, 'rt')
+    else:
+        return open(file, 'r')
+
+def prepare_custom_db(custom_db_loc):
+    """
+    Prepares a custom database for SPIDER crawling. Expected that custom database
+    is in fasta format.
+
+    Arguments:
+        custom_db_loc -- Path to the custom database
+    
+    Returns:
+        count -- Number of sequences in the database
+        db_loc -- Location of prepared database
+    """
+
+    count = 0
+    temp_db_out = f"spider_tmp_customdb_{uuid.uuid4().hex}.fasta"
+
+    with open_correct_format(custom_db_loc) as database:
+        with open(temp_db_out, "w") as output:
+            for line in database.readlines():
+                # Checks headers
+                if line.startswith(">"):
+                    # If not first sequence, add newline to separate sequence
+                    if count > 0:
+                        output.write("\n")
+                    output.write(line.strip() + "\n")
+                    count +=1 # Add to count
+                # Print sequences if current header is correct species
+                else:
+                    output.write(line.strip())
+
+    return count, temp_db_out
