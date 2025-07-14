@@ -129,10 +129,16 @@ if args.fasta or args.list:
         if not valid_list:
             print(f"ERROR: The following assemblies in the provided list could not be found: {','.join(errors)}")
             sys.exit(1)
+
+        # Print number of samples identified
+        print(f"Identified {len(fasta_list)} assemblies to crawl.")
         # Run crawler
         all_results = []
+        count = 0
         for assembly in fasta_list:
             all_results.append(crawl(assembly, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size))
+            count +=1 
+            print(f"Completed {count} of {len(fasta_list)} ({round(count/len(fasta_list)*100, 2)}%)")
         results = pd.concat(all_results, ignore_index=True)
 
     # Output results
