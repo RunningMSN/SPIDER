@@ -277,7 +277,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
             # Error is empty
             error = ""
         elif len(pairs) > 0:
-            error = "Forward and reverse primers were identified, but they were not in the correct order (i.e. F after R or R after F."
+            error = "Forward and reverse primers were identified, but they were not in the correct order (i.e. F after R or R after F)."
     elif forward_matches is None and reverse_matches is None:
         error = "Neither forward nor reverse primers were not identified."
     elif forward_matches is None:
