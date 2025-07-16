@@ -2,6 +2,7 @@ import argparse
 from helpers.db_functions import download_vfdb, extract_species, prepare_custom_db
 from helpers.crawler import crawl
 from helpers.assembly_list_funcs import parse_list, list_exists
+from helpers.fasta_extract import extract_sequences
 import sys
 import os
 import time
@@ -19,8 +20,10 @@ parser.add_argument("-sl", "--slide_limit", type=float, required=False, default=
 parser.add_argument("-lt", "--length", type=float, required=False, default=20, help='Percent length tolerance. Default: 20%% (Range of 80-120%%)')
 parser.add_argument("-it", "--identity", type=float, required=False, default=0, help='Percent identity tolerance for calling true match. Anything about this threshold will be called positive hit. Default: 0%%')
 parser.add_argument("-p", "--primer_size", type=int, required=False, default=20, help='Length of primer to use. Default: 20bp')
-parser.add_argument("-o", "--output", type=str, required=False, help='Output file as tab-separated values. Default: stdout')
+parser.add_argument("-o", "--output", type=str, required=False, help='Output file/folder. For SPIDER this will be a tab-separated values table. Default: stdout')
 parser.add_argument("--pcr", type=str, required=False, help='Perform simple in-silico PCR. Assumed input as a text file in the format: target forward_primer reverse_primer')
+parser.add_argument("--fasta_extract", type=str, required=False, help='Uses SPIDER output file as input to generate a FASTA file with sequences of the desired sequences.')
+parser.add_argument("--translate", action='store_true', help='Translate fasta_extract to amino acid sequence rather than nucleotides. Assumes that the sequence begins with the start codon.')
 args = parser.parse_args()
 
 # Print help menu if no arguments supplied
@@ -28,7 +31,7 @@ if len(sys.argv) == 1:
     parser.print_help()
 
 # Print error message if supplied species and virulence factor, but did not supply an assembly
-if (not args.fasta and not args.list) and (args.species or args.virulence_factor or args.custom):
+if (not args.fasta and not args.list) and (args.species or args.virulence_factor or args.custom_db):
     print(f"ERROR: An assembly file (FASTA) or list of assemblies must be specified to identify virulence factors/sequences.")
     sys.exit(1)
 
@@ -154,3 +157,6 @@ if args.fasta or args.list:
     
     # Print complete message
     print(f"SPIDER has finished running in {round(time.time() - start_time, 2)} seconds.")
+
+if args.fasta_extract:
+    extract_sequences(args.fasta_extract, args.translate, args.output)
