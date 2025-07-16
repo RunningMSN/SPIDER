@@ -13,28 +13,49 @@ def extract_sequences(input_tsv, translate, output):
 		output -- Output file location. If none, output to console.
 
 	Returns:
-		None.
+		True/False -- If extracted sequences (have valid sequences) return True. Otherwise return False.
 	"""
-	# Read SPIDER output file
-	df_input = pd.read_csv(input_tsv, sep="\t")
-	# Iterate through the sequence
-	for index, row in df_input.iterrows():
-		# Create header and grab sequence. Assumes that file is where it was when entered into SPIDER.
-		header = f'>{row["Name"]}\t{row["Query"]}'
-		# Store type of sequence output
-		type = "NT"
-		seq = get_sequence(row["Query"], row["Contig"], row["Start"], row["End"], row["Strand"])
-		if translate:
-			type = "AA"
-			seq = translate_seq(seq)
+	try:
+		# Read SPIDER output file
+		df_input = pd.read_csv(input_tsv, sep="\t")
 
-		wrapped_seq = wrap_sequence(seq)
-		
-		if not output:
-			print(f"{header}\n{wrapped_seq}\n")
+		if df_input["Valid"].sum() > 0:
+			# Iterate through the sequence
+			for index, row in df_input.iterrows():
+				print(row["Query"])
+				if row["Valid"]:
+					# Create header and grab sequence. Assumes that file is where it was when entered into SPIDER.
+					header = f'>{row["Name"]}\t{row["Query"]}'
+					# Store type of sequence output
+					type = "NT"
+					seq = get_sequence(row["Query"], row["Contig"], row["Start"], row["End"], row["Strand"])
+					if translate:
+						type = "AA"
+						if not seq.lower().startswith("atg"):
+							print(f"WARNING: The sequence for {row["Name"]} in {row["Query"]} does not start with ATG.")
+						seq = translate_seq(seq)
+
+					wrapped_seq = wrap_sequence(seq)
+					
+					if not output:
+						print(f"{header}\n{wrapped_seq}\n")
+					else:
+						with open(output, "a") as output_file:
+							output_file.write(f"{header}\n{wrapped_seq}\n")
+			return True
 		else:
-			with open(output, "a") as output_file:
-				output_file.write(f"{header}\n{wrapped_seq}\n")
+			print(f"ERROR: The file {input_tsv} did not contain any valid sequences to extract.")
+	except FileNotFoundError:
+		print(f"ERROR: The file {input_tsv} does not exist.")
+	except pd.errors.EmptyDataError:
+		print(f"ERROR: The file {input_tsv} is empty.")
+	except pd.errors.ParserError:
+		print(f"ERROR: The file {input_tsv} is malformed.")
+	except KeyError:
+		print(f"ERROR: The file {input_tsv} is not in the correct format. Make sure your input to --fasta_extract is a valid output from SPIDER.")
+	except UnicodeDecodeError:
+		print(f"ERROR: The file {input_tsv} is not in the correct format. Make sure your input to --fasta_extract is a valid output from SPIDER.")
+	return False
 
 
 def get_sequence(genome_loc, contig, start, end, strand):

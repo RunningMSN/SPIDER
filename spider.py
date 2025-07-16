@@ -158,5 +158,9 @@ if args.fasta or args.list:
     # Print complete message
     print(f"SPIDER has finished running in {round(time.time() - start_time, 2)} seconds.")
 
+# Extract sequences
 if args.fasta_extract:
-    extract_sequences(args.fasta_extract, args.translate, args.output)
+    obtained_seqs = extract_sequences(args.fasta_extract, args.translate, args.output)
+
+    if obtained_seqs:
+        print(f"Successfully extracted sequences from {args.fasta_extract}")
