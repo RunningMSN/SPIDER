@@ -9,6 +9,7 @@ import numpy as np
 from pyfaidx import Fasta
 from Bio.Align import PairwiseAligner
 from Bio.Seq import Seq
+from itertools import combinations
 
 def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size):
     """
@@ -43,6 +44,9 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size)
                 # Append to overall results
                 all_results.append(result)
     df_results = pd.DataFrame(all_results, columns=RESULTS_COLUMNS)
+
+    # Add warnings for overlaps
+    df_results = find_overlaps(df_results)
 
     # Cleanup temporary environment
     cleanup(temp_directory)
@@ -441,3 +445,27 @@ def reverse_complement(sequence):
     sequence = Seq(sequence)
     
     return sequence.reverse_complement()
+
+def find_overlaps(table):
+    """
+    Identifies overlapping sequences and adds warning messages when overlaps are identified.
+    """
+    # Iterate over all unique pairs
+    for idx1, idx2 in combinations(table.index, 2):
+        row1, row2 = table.loc[idx1], table.loc[idx2]
+
+        # Check conditions
+        if row1["Valid"] and row2["Valid"] and row1["Query"] == row2["Query"] and row1["Strand"] == row2["Strand"]:
+            # Check for overlap
+            if row1["End"] >= row2["Start"] and row2["End"] >= row1["Start"]:
+                warning1 = f"WARNING: This sequence overlaps the same region as {row2['Name']}"
+                warning2 = f"WARNING: This sequence overlaps the same region as {row1['Name']}"
+
+                # Append warning to both rows
+                for idx, warning in [(idx1, warning1), (idx2, warning2)]:
+                    if table.at[idx, "Message"]:
+                        table.at[idx, "Message"] += "; " + warning
+                    else:
+                        table.at[idx, "Message"] = warning
+
+    return table
