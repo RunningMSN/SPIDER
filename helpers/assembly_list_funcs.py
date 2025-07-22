@@ -12,9 +12,14 @@ def parse_list(list):
         errors -- List of assemblies that coudl not be found
     """
     with open(list, "r") as assembly_list:
-        lines = assembly_list.readlines()
-        lines = [line.strip() for line in lines]
-    return lines
+        kept_lines = []
+        for line in assembly_list.readlines():
+            # Remove newlines
+            line = line.strip()
+            # Get rid of any extra empty lines
+            if len(line) > 0:
+                kept_lines.append(line)
+    return kept_lines
 
 def list_exists(list):
     """
