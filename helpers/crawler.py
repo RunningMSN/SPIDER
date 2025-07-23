@@ -134,7 +134,6 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
     forward_matches, reverse_matches = parse_primer_matches(vf_directory)
     # Sort the primers into pairs
     primer_pairs, error = sort_primer_pairs(forward_matches, reverse_matches, ref_length)
-
     # Store returned output
     results = []
 
@@ -245,6 +244,9 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
         
         # Merge on sseqid and strand to make sure primers are on correct contig and in correct direction
         pairs = pd.merge(forward_matches, reverse_matches, on=["sseqid", "strand"], suffixes=("_f", "_r"))
+
+        if len(pairs) == 0:
+            error = f"Forward primers found on {','.join(pd.unique(forward_matches['sseqid']))} ({'/'.join(forward_matches['strand'])}) and reverse primers found on {','.join(pd.unique(reverse_matches['sseqid']))} ({'/'.join(reverse_matches['strand'])}) "
 
         # Filter out bad pairs that are in improper order
         valid_ordered_pairs = pairs[
@@ -449,6 +451,12 @@ def reverse_complement(sequence):
 def find_overlaps(table):
     """
     Identifies overlapping sequences and adds warning messages when overlaps are identified.
+
+    Arguments:
+        table -- Dataframe with results from SPIDER
+
+    Returns:
+        table -- Input table with overlapping regions appended to message
     """
     # Iterate over all unique pairs
     for idx1, idx2 in combinations(table.index, 2):
