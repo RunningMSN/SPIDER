@@ -22,13 +22,12 @@ def extract_sequences(input_tsv, translate, output):
 		if df_input["Valid"].sum() > 0:
 			# Iterate through the sequence
 			for index, row in df_input.iterrows():
-				print(row["Query"])
 				if row["Valid"]:
 					# Create header and grab sequence. Assumes that file is where it was when entered into SPIDER.
 					header = f'>{row["Name"]}\t{row["Query"]}'
 					# Store type of sequence output
 					type = "NT"
-					seq = get_sequence(row["Query"], row["Contig"], row["Start"], row["End"], row["Strand"])
+					seq = get_sequence(row["Query"], row["Contig"], int(row["Start"]), int(row["End"]), row["Strand"])
 					if translate:
 						type = "AA"
 						if not seq.lower().startswith("atg"):
@@ -42,6 +41,7 @@ def extract_sequences(input_tsv, translate, output):
 					else:
 						with open(output, "a") as output_file:
 							output_file.write(f"{header}\n{wrapped_seq}\n")
+			# If have valid sequences to extract return true
 			return True
 		else:
 			print(f"ERROR: The file {input_tsv} did not contain any valid sequences to extract.")
@@ -55,6 +55,7 @@ def extract_sequences(input_tsv, translate, output):
 		print(f"ERROR: The file {input_tsv} is not in the correct format. Make sure your input to --fasta_extract is a valid output from SPIDER.")
 	except UnicodeDecodeError:
 		print(f"ERROR: The file {input_tsv} is not in the correct format. Make sure your input to --fasta_extract is a valid output from SPIDER.")
+	# Return false in event of errors or no sequences to extract
 	return False
 
 
