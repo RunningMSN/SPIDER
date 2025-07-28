@@ -93,6 +93,8 @@ def wrap_sequence(seq, width=60):
 	Output:
 		wrapped_seq -- Wrapped sequence with newline inserted every width characters.
 	"""
+	# Convert Seq to string
+	seq = str(seq)
 	# Add newline every width characters
 	wrapped_seq = '\n'.join([seq[i:i+width] for i in range(0, len(seq), width)])
 
