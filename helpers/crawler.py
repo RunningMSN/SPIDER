@@ -463,7 +463,7 @@ def find_overlaps(table):
         row1, row2 = table.loc[idx1], table.loc[idx2]
 
         # Check conditions
-        if row1["Valid"] and row2["Valid"] and row1["Query"] == row2["Query"] and row1["Strand"] == row2["Strand"]:
+        if row1["Valid"] and row2["Valid"] and row1["Query"] == row2["Query"] and row1["Strand"] == row2["Strand"] and row1["Contig"] == row2["Contig"]:
             # Check for overlap
             if row1["End"] >= row2["Start"] and row2["End"] >= row1["Start"]:
                 warning1 = f"WARNING: This sequence overlaps the same region as {row2['Name']}"
