@@ -27,15 +27,15 @@ def check_downloaded():
         return False
 
 
-def extract_species(species):
+def extract_vfs(search_term):
     """
-    Creates a limited database of VFs unique to a specific species. 
+    Creates a limited database of VFs unique to a specific search. 
     If exists, will overwrite the previous database. Database is written
     in fasta format, however, the sequence is output in a single line to
     facilitate easier parsing later.
 
     Returns:
-        count -- Number of VFs belonging to the species
+        count -- Number of VFs belonging to the search_term
         db_loc -- Location of the output database
     """
     # Make sure the base database exists first
@@ -44,7 +44,7 @@ def extract_species(species):
         sys.exit(1)
 
     # Output file name
-    output_file = "VFDB_" + species.replace(" ", "_") + ".fasta"
+    output_file = "VFDB_" + search_term.replace(" ", "_") + ".fasta"
     output_loc = f"{VFDB_FOLDER_NAME}/{output_file}"
 
     # Store VF count
@@ -53,22 +53,22 @@ def extract_species(species):
     # Iterate through the base database and only store sequences with header that contains species of interest
     with open(output_loc, "w") as output:
         with gzip.open(f"{VFDB_LOC}", 'rt') as VFDB_file:
-            correct_species = False
+            correct_search = False
             for line in VFDB_file.readlines():
                 # Checks headers
                 if line.startswith(">"):
-                    if species in line:
+                    if search_term in line:
                         # If not first VF, add newline to separate from last VF
                         if count > 0:
                             output.write("\n")
                         output.write(line.strip() + "\n")
-                        correct_species = True
+                        correct_search = True
                         count +=1 # Add to count
                     else:
-                        correct_species = False
-                # Print sequences if current header is correct species
+                        correct_search = False
+                # Print sequences if current header is correct search
                 else:
-                    if correct_species:
+                    if correct_search:
                         output.write(line.strip())
 
     return count, output_loc
