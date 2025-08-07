@@ -156,7 +156,11 @@ if args.fasta or args.list:
     os.remove(crawl_db_loc)
     
     # Print complete message
-    print(f"SPIDER has finished running in {round(time.time() - start_time, 2)} seconds.")
+    end_time = time.time()
+    if end_time <= 60:
+        print(f"SPIDER has finished running in {round(end_time - start_time, 2)} seconds.")
+    else:
+        print(f"SPIDER has finished running in {round((end_time - start_time)/60, 2)} minutes.")
 
 # Extract sequences
 if args.fasta_extract:
