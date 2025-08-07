@@ -1,7 +1,7 @@
 import argparse
 from helpers.db_functions import download_vfdb, extract_species, prepare_custom_db
 from helpers.crawler import crawl
-from helpers.assembly_list_funcs import parse_list, list_exists
+from helpers.assembly_list_funcs import parse_list, list_exists, parse_directory
 from helpers.fasta_extract import extract_sequences
 import sys
 import os
@@ -10,9 +10,10 @@ import pandas as pd
 
 # Parse args
 parser = argparse.ArgumentParser(description='Sliding Primer In-silico Detection of Encoded Regions (SPIDER) - Uses in-silico PCR with sequential primers to identify virulence factors')
-parser.add_argument("-d", "--download", action='store_true', help='Downloads a current copy of the VFDB.')
+parser.add_argument("--download", action='store_true', help='Downloads a current copy of the VFDB.')
 parser.add_argument("-f", "--fasta",  type=str, required=False, help='Path to FASTA file which will be scanned for virulence factors.')
 parser.add_argument("-l", "--list",  type=str, required=False, help='Path to txt file containing a list of paths to FASTA files to identify virulence factors. Each FASTA file should be on a new line.')
+parser.add_argument("-d", "--directory",  type=str, required=False, help='Path to directory containing assemblies in FASTA format (.fasta/.fna)')
 parser.add_argument("-s", "--species",  type=str, required=False, help='Extract a set of particular species from VFDB. Must be supplied in quotation marks such as "Staphylococcus aureus"')
 parser.add_argument("-v", "--virulence_factor", type=str, required=False, help='Search for a specific virulence factor.')
 parser.add_argument("-c", "--custom_db", type=str, required=False, help='Search for sequences in a custom database. Expected in fasta or fasta.gz format.')
@@ -30,9 +31,17 @@ args = parser.parse_args()
 if len(sys.argv) == 1:
     parser.print_help()
 
-# Print error message if supplied species and virulence factor, but did not supply an assembly
-if (not args.fasta and not args.list) and (args.species or args.virulence_factor or args.custom_db):
-    print(f"ERROR: An assembly file (FASTA) or list of assemblies must be specified to identify virulence factors/sequences.")
+# Check that only one input format was provided
+num_assembly_format_provided = 0
+if args.fasta: num_assembly_format_provided += 1
+if args.list: num_assembly_format_provided += 1
+if args.directory: num_assembly_format_provided += 1
+
+if num_assembly_format_provided > 1 and (args.species or args.virulence_factor or args.custom_db):
+    print(f"ERROR: Multiple inputs were provided (single fasta/list/directory). Please only select one.")
+    sys.exit(1)
+elif num_assembly_format_provided == 0 and (args.species or args.virulence_factor or args.custom_db):
+    print(f"ERROR: An assembly file (FASTA), list of assemblies, or directory contain assemblies must be specified to identify virulence factors/sequences.")
     sys.exit(1)
 
 # Run download
@@ -42,12 +51,7 @@ if args.download:
     print("Download was successfully completed.")
 
 # Run SPIDER
-if args.fasta or args.list:
-    # Check that only one was provided
-    if args.fasta and args.list:
-        print(f"ERROR: Both fasta and list were provided. Please only choose 1.")
-        sys.exit(1)
-
+if args.fasta or args.list or args.directory:
     # Check that assembly file exists
     if args.fasta:
         if not os.path.exists(args.fasta):
@@ -56,6 +60,10 @@ if args.fasta or args.list:
     elif args.list:
         if not os.path.exists(args.list):
             print(f"ERROR: Could not find assembly list located at {args.list}")
+            sys.exit(1)
+    elif args.directory:
+        if not os.path.exists(args.directory):
+            print(f"ERROR: Could not find directory located at {args.directory}")
             sys.exit(1)
     elif args.custom_db:
         if not os.path.exists(args.custom_db):
@@ -124,14 +132,20 @@ if args.fasta or args.list:
     if args.fasta:
         results = crawl(args.fasta, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size)
     ## List of assemblies
-    elif args.list:
+    elif args.list or args.directory:
         # Parse list of assemblies
-        fasta_list = parse_list(args.list)
-        # Check to make sure all assemblies exist, if not exit and warn user
-        valid_list, errors = list_exists(fasta_list)
-        if not valid_list:
-            print(f"ERROR: The following assemblies in the provided list could not be found: {','.join(errors)}")
-            sys.exit(1)
+        if args.list:
+            fasta_list = parse_list(args.list)
+            # Check to make sure all assemblies exist, if not exit and warn user
+            valid_list, errors = list_exists(fasta_list)
+            if not valid_list:
+                print(f"ERROR: The following assemblies in the provided list could not be found: {','.join(errors)}")
+                sys.exit(1)
+        elif args.directory:
+            fasta_list = parse_directory(args.directory)
+            if len(fasta_list) == 0:
+                print(f"ERROR: The directory {args.directory} did not contain any fasta files. Check that files exist that end in .fasta or .fna.")
+                sys.exit(1)
 
         # Print number of samples identified
         print(f"Identified {len(fasta_list)} assemblies to crawl.")

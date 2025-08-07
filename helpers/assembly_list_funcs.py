@@ -40,3 +40,23 @@ def list_exists(list):
             errors.append(item)
             valid = False
     return valid, errors
+
+def parse_directory(directory):
+    """
+    Checks to make sure all assemblies in the provided list exist.
+
+    Arguments:
+        directory -- Path to directory that contains assemblies
+
+    Return:
+        fasta_list -- List of fasta files in the directory
+    """
+    # Store fasta files in the directory
+    fasta_list = []
+    
+    # Fine all files in the directory
+    for file in os.listdir(directory):
+        if file.endswith(".fasta") or file.endswith(".fna"):
+            fasta_list.append(f"{directory}/{file}")
+
+    return fasta_list
