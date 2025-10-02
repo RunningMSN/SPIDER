@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 import math
-from helpers.settings import BLAST_COLUMNS_FMT_6, RESULTS_COLUMNS
+from helpers.settings import BLAST_COLUMNS_FMT_6, SPIDER_RESULTS_COLUMNS
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
@@ -26,10 +26,10 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size)
     Returns:
         df_results -- Results of crawler in the form of pandas dataframe
     """
-    # Create a temporary directory
+    # Create a temporary directory name
     temp_directory = f"spider_tmp_{uuid.uuid4().hex}"
 
-    # Setup crawler environment
+    # Setup crawler environment and temp directory
     setup(fasta, temp_directory)
 
     # Iterate through all VFs to test
@@ -43,16 +43,16 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size)
                 result = (fasta,header.strip().replace(">",""),) + result
                 # Append to overall results
                 all_results.append(result)
-    df_results = pd.DataFrame(all_results, columns=RESULTS_COLUMNS)
+    spider_results = pd.DataFrame(all_results, columns=SPIDER_RESULTS_COLUMNS)
 
     # Add warnings for overlaps
-    df_results = find_overlaps(df_results)
+    spider_results = find_overlaps(spider_results)
 
     # Cleanup temporary environment
     cleanup(temp_directory)
 
     # Return results
-    return df_results
+    return spider_results
 
 def setup(fasta, temp_directory):
     """
@@ -111,6 +111,8 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
     # Find sequence length for number of primers to generate
     ref_length = len(ref_sequence)
     number_primers = math.floor(slide_limit / 100 * ref_length)
+    # Make sure that the number of primers can never be 0
+    if number_primers < 1: number_primers = 1
 
     # Generate the forward primers
     with open(f"{vf_directory}/forward_primers.fasta", "w") as forward_primers:
@@ -142,7 +144,7 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
         vf_extracted_counter = 0
         for pair in primer_pairs:
             contig, start, end, strand, forward_slide, reverse_slide = extract_vf_location(pair, forward_matches, reverse_matches)
-
+            
             # Extract the VF sequence
             vf_sequence, vf_length = extract_vf_sequence(contig, start, end, temp_directory)
             
@@ -173,6 +175,7 @@ def parse_primer_matches(vf_directory):
     # Parse the best forward primer match(es)
     forward_matches = pd.read_csv(f"{vf_directory}/forward_primers.blast.txt", sep="\t", header=None, names=BLAST_COLUMNS_FMT_6)
     if len(forward_matches) > 0:
+        # Set names to just the slide amount
         forward_matches["qseqid"] = forward_matches["qseqid"].str.replace("forward_", "")
         # Sort to make sure first primers are kept
         forward_matches["qseqid"] = forward_matches["qseqid"].astype(int)
@@ -189,6 +192,7 @@ def parse_primer_matches(vf_directory):
     # Parse the best reverse primer match(es)
     reverse_matches = pd.read_csv(f"{vf_directory}/reverse_primers.blast.txt", sep="\t", header=None, names=BLAST_COLUMNS_FMT_6)
     if len(reverse_matches) > 0:
+        # Set names to just the slide amount
         reverse_matches["qseqid"] = reverse_matches["qseqid"].str.replace("reverse_", "")
         # Sort to make sure first primers are kept
         reverse_matches["qseqid"] = reverse_matches["qseqid"].astype(int)
@@ -246,7 +250,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
         pairs = pd.merge(forward_matches, reverse_matches, on=["sseqid", "strand"], suffixes=("_f", "_r"))
 
         if len(pairs) == 0:
-            error = f"Forward primers found on {','.join(pd.unique(forward_matches['sseqid']))} ({'/'.join(forward_matches['strand'])}) and reverse primers found on {','.join(pd.unique(reverse_matches['sseqid']))} ({'/'.join(reverse_matches['strand'])}) "
+            error = f"Forward primers found on {','.join(pd.unique(forward_matches['sseqid'].astype(str)))} ({'/'.join(forward_matches['strand'])}) and reverse primers found on {','.join(pd.unique(reverse_matches['sseqid'].astype(str)))} ({'/'.join(reverse_matches['strand'])}) "
 
         # Filter out bad pairs that are in improper order
         valid_ordered_pairs = pairs[
@@ -290,6 +294,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
         error = f"The forward primer was not identified, a reverse primer was found with slide of {reverse_matches["qseqid"][0]}."
     elif reverse_matches is None:
         error = f"The reverse primer was not identified, a forward primer was found with slide of {forward_matches["qseqid"][0]}."
+
     return primer_pairs_indices, error
 
 
@@ -315,6 +320,7 @@ def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches):
     # Obtain location of VF
     contig = forward_matches.iloc[primer_pair_indices[0]]["sseqid"]
     strand = forward_matches.iloc[primer_pair_indices[0]]["strand"]
+
     
     ## If positive strand then going from sstart to send
     if strand == "+":
@@ -325,9 +331,9 @@ def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches):
     # If negative strand, then reverse the direction
     else:
         # Start position is where reverse primer landed and add slide amount
-        start = int(reverse_matches.iloc[primer_pair_indices[1]]["send"]) + int(reverse_matches.iloc[primer_pair_indices[1]]["qseqid"])
+        start = int(reverse_matches.iloc[primer_pair_indices[1]]["send"]) - int(reverse_matches.iloc[primer_pair_indices[1]]["qseqid"])
         # End position is where forward primer landed, and subtract slide amount
-        end = int(forward_matches.iloc[primer_pair_indices[0]]["sstart"]) - int(forward_matches.iloc[primer_pair_indices[0]]["qseqid"])
+        end = int(forward_matches.iloc[primer_pair_indices[0]]["sstart"]) + int(forward_matches.iloc[primer_pair_indices[0]]["qseqid"])
     
     forward_slide = forward_matches.iloc[primer_pair_indices[0]]["qseqid"]
     reverse_slide = reverse_matches.iloc[primer_pair_indices[1]]["qseqid"]

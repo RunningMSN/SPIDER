@@ -22,4 +22,20 @@ BLAST_COLUMNS_FMT_6 = (
     "bitscore"   # Bit score
 )
 
-RESULTS_COLUMNS = ("Query","Name", "Valid", "Contig", "Start", "F_Slide", "End", "R_Slide", "Strand", "Identity", "VF_length", "Ref_Length", "Coverage_Perc_Len", "Coverage_Perc_Align", "Message")
+SPIDER_RESULTS_COLUMNS = (
+	"Query",                # Name of query assembly
+	"Name",                 # Name of search sequences/VF
+	"Valid",                # SPIDER call of present/absent
+	"Contig",               # SPIDER identified contig
+	"Start",                # SPIDER identified start site
+	"F_Slide",              # Forward slide in SPIDER
+	"End",                  # SPIDER identified end site
+	"R_Slide",              # Reverse slide in SPIDER
+	"Strand",               # Strand SPIDER detected VF on
+	"Identity",             # Identity between SPIDER sequence detected and reference
+	"VF_length",            # Length of SPIDER detected sequence
+	"Ref_Length",           # Length of reference seqeunce
+	"Coverage_Perc_Len",    # Percentage length difference between SPIDER and reference sequence
+	"Coverage_Perc_Align",  # Percentage coverage based on alignment between SPIDER and reference sequence
+	"Message"               # SPIDER message for failures/warnings
+	)
