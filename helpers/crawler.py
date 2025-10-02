@@ -9,6 +9,7 @@ import numpy as np
 from pyfaidx import Fasta
 from Bio.Align import PairwiseAligner
 from Bio.Seq import Seq
+from Bio import SeqIO
 from itertools import combinations
 
 def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size):
@@ -143,7 +144,7 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
     if len(primer_pairs) > 0:
         vf_extracted_counter = 0
         for pair in primer_pairs:
-            contig, start, end, strand, forward_slide, reverse_slide = extract_vf_location(pair, forward_matches, reverse_matches)
+            contig, start, end, strand, forward_slide, reverse_slide = extract_vf_location(pair, forward_matches, reverse_matches, temp_directory)
             
             # Extract the VF sequence
             vf_sequence, vf_length = extract_vf_sequence(contig, start, end, temp_directory)
@@ -298,7 +299,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
     return primer_pairs_indices, error
 
 
-def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches):
+def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches, temp_directory):
     """
     Returns the location of the virulence factor given a set of primer pair indices
     for the forward and reverse BLAST searches.
@@ -320,7 +321,6 @@ def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches):
     # Obtain location of VF
     contig = forward_matches.iloc[primer_pair_indices[0]]["sseqid"]
     strand = forward_matches.iloc[primer_pair_indices[0]]["strand"]
-
     
     ## If positive strand then going from sstart to send
     if strand == "+":
@@ -335,6 +335,17 @@ def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches):
         # End position is where forward primer landed, and subtract slide amount
         end = int(forward_matches.iloc[primer_pair_indices[0]]["sstart"]) + int(forward_matches.iloc[primer_pair_indices[0]]["qseqid"])
     
+
+    # Grab length of the contig to ensure that sliding doesn't exceed the ends
+    contigs = SeqIO.index(f"{temp_directory}/reference.fasta", "fasta")
+    contig_length = len(contigs[contig].seq)
+    
+    # Check that not exceeding the contig limits
+    if start < 1:
+        start = 1
+    if end > contig_length:
+        end = contig_length
+
     forward_slide = forward_matches.iloc[primer_pair_indices[0]]["qseqid"]
     reverse_slide = reverse_matches.iloc[primer_pair_indices[1]]["qseqid"]
 
