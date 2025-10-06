@@ -338,7 +338,7 @@ def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches, t
 
     # Grab length of the contig to ensure that sliding doesn't exceed the ends
     contigs = SeqIO.index(f"{temp_directory}/reference.fasta", "fasta")
-    contig_length = len(contigs[contig].seq)
+    contig_length = len(contigs[str(contig)].seq)
     
     # Check that not exceeding the contig limits
     if start < 1:
