@@ -21,8 +21,7 @@ parser.add_argument("-lt", "--length", type=float, required=False, default=20, h
 parser.add_argument("-it", "--identity", type=float, required=False, default=0, help='Percent identity tolerance for calling true match. Anything about this threshold will be called positive hit. Default: 0%%')
 parser.add_argument("-p", "--primer_size", type=int, required=False, default=20, help='Length of primer to use. Default: 20bp')
 parser.add_argument("-o", "--output", type=str, required=False, help='Output file/folder. For SPIDER this will be a tab-separated values table. Default: stdout')
-parser.add_argument("--pcr", type=str, required=False, help='Perform simple in-silico PCR. Assumed input as a text file in the format: target forward_primer reverse_primer')
-parser.add_argument("--fasta_extract", type=str, required=False, help='Uses SPIDER output file as input to generate a FASTA file with sequences of the desired sequences.')
+parser.add_argument("-e", "--fasta_extract", type=str, required=False, help='Uses SPIDER output file as input to generate a FASTA file with sequences of the desired sequences.')
 parser.add_argument("--translate", action='store_true', help='Translate fasta_extract to amino acid sequence rather than nucleotides. Assumes that the sequence begins with the start codon.')
 args = parser.parse_args()
 
