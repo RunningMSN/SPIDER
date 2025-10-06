@@ -2,6 +2,7 @@ import pandas as pd
 from pyfaidx import Fasta
 from helpers.crawler import reverse_complement
 from Bio.Seq import Seq
+import sys
 
 def extract_sequences(input_tsv, translate, output):
 	"""
@@ -31,7 +32,7 @@ def extract_sequences(input_tsv, translate, output):
 					if translate:
 						type = "AA"
 						if not seq.lower().startswith("atg"):
-							print(f"WARNING: The sequence for {row["Name"]} in {row["Query"]} does not start with ATG.")
+							print(f"WARNING: The sequence for {row["Name"]} in {row["Query"]} does not start with ATG.", file=sys.stderr)
 						seq = translate_seq(seq)
 
 					wrapped_seq = wrap_sequence(seq)
@@ -44,17 +45,17 @@ def extract_sequences(input_tsv, translate, output):
 			# If have valid sequences to extract return true
 			return True
 		else:
-			print(f"ERROR: The file {input_tsv} did not contain any valid sequences to extract.")
+			print(f"ERROR: The file {input_tsv} did not contain any valid sequences to extract.", file=sys.stderr)
 	except FileNotFoundError:
-		print(f"ERROR: The file {input_tsv} does not exist.")
+		print(f"ERROR: The file {input_tsv} does not exist.", file=sys.stderr)
 	except pd.errors.EmptyDataError:
-		print(f"ERROR: The file {input_tsv} is empty.")
+		print(f"ERROR: The file {input_tsv} is empty.", file=sys.stderr)
 	except pd.errors.ParserError:
-		print(f"ERROR: The file {input_tsv} is malformed.")
+		print(f"ERROR: The file {input_tsv} is malformed.", file=sys.stderr)
 	except KeyError:
-		print(f"ERROR: The file {input_tsv} is not in the correct format. Make sure your input to --fasta_extract is a valid output from SPIDER.")
+		print(f"ERROR: The file {input_tsv} is not in the correct format. Make sure your input to --fasta_extract is a valid output from SPIDER.", file=sys.stderr)
 	except UnicodeDecodeError:
-		print(f"ERROR: The file {input_tsv} is not in the correct format. Make sure your input to --fasta_extract is a valid output from SPIDER.")
+		print(f"ERROR: The file {input_tsv} is not in the correct format. Make sure your input to --fasta_extract is a valid output from SPIDER.", file=sys.stderr)
 	# Return false in event of errors or no sequences to extract
 	return False
 
