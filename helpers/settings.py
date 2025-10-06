@@ -1,12 +1,12 @@
-# Settings
-VFDB_NT_URL = "https://www.mgc.ac.cn/VFs/Down/VFDB_setA_nt.fas.gz"
-VFDB_FOLDER_NAME = "VFDB"
-VFDB_DATABASE_FILE_NAME = "VFDB_setA_nt.fas.gz"
+SPIDER_DBS_FOLDER = "spider_databases"
+
+# List of available databases
+DATABASE_DESCRIPTIONS = {"vfdb": "Virulence Factor Database"}
+DATABASE_URL = {"vfdb": "https://www.mgc.ac.cn/VFs/Down/VFDB_setA_nt.fas.gz"}
+DATABASE_FILENAMES = {"vfdb": "VFDB_setA_nt.fas.gz"}
 
 
 # Helpers
-VFDB_LOC = VFDB_FOLDER_NAME + "/" + VFDB_DATABASE_FILE_NAME
-
 BLAST_COLUMNS_FMT_6 = (
     "qseqid",    # Query sequence ID
     "sseqid",    # Subject (database) sequence ID

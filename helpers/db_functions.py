@@ -1,112 +1,113 @@
-from helpers.settings import VFDB_NT_URL, VFDB_FOLDER_NAME, VFDB_LOC
+from helpers.settings import DATABASE_DESCRIPTIONS, DATABASE_FILENAMES, DATABASE_URL, SPIDER_DBS_FOLDER
 import os
 from urllib.request import urlretrieve
 import gzip
 import sys
 import uuid
+from Bio import SeqIO
 
-def download_vfdb():
+def list_databases():
     """
-    Downloads the current version of the VFDB.
-    """
-    # Make folder for output
-    os.makedirs(f"{VFDB_FOLDER_NAME}", exist_ok=True)
-    urlretrieve(VFDB_NT_URL, f"{VFDB_LOC}") # In future add versioning to this
+    Reutrns a list of available databases. Each database is on a new line with its
+    name and brief description.
 
-
-def check_downloaded():
-    """
-    Checks if the VFDB has been downloaded.
+    Arguments:
+        none
     
-    returns: True if VFDB has been downloaded.
+    Returns:
+        db_list - String containing database name - description each on a new line
     """
+    
+    return "\n".join([f"{key} - {value}" for key, value in DATABASE_DESCRIPTIONS.items()])
 
-    if os.path.exists(VFDB_LOC):
-        return True
-    else:
-        return False
-
-
-def extract_vfs(search_term):
+def get_database(db_name):
     """
-    Creates a limited database of VFs unique to a specific search. 
-    If exists, will overwrite the previous database. Database is written
-    in fasta format, however, the sequence is output in a single line to
-    facilitate easier parsing later.
+    Returns the location of a database.
+
+    Arguments:
+        db_name -  Name of the database queried
 
     Returns:
-        count -- Number of VFs belonging to the search_term
-        db_loc -- Location of the output database
+        path - Path to the database
     """
-    # Make sure the base database exists first
-    if not check_downloaded():
-        print(f"ERROR: VFDB has not been downloaded. Please download the base database using the --download flag first.")
-        sys.exit(1)
 
-    # Output file name
-    output_file = "VFDB_" + search_term.replace(" ", "_") + ".fasta"
-    output_loc = f"{VFDB_FOLDER_NAME}/{output_file}"
+    # Returns none if there is no special database with the request name
+    if not db_name in DATABASE_DESCRIPTIONS.keys():
+        return None
+    # If database is not downloaded, then download it
+    if not check_downloaded(db_name):
+        print(f"The database {db_name} was not downloaded. Download will now be attempted.", file=sys.stderr)
+        try:
+            download_db(db_name)
+            print(f"Successfully downloaded {db_name}.", file=sys.stderr)
+        except:
+            print(f"An error occurred while attempting to download {db_name}. Please try again later, or use a pre-downloaded fasta database.", file=sys.stderr)
+            sys.exit(1)
+    return f"{SPIDER_DBS_FOLDER}/{DATABASE_FILENAMES[db_name]}"
 
-    # Store VF count
-    count = 0
+def check_downloaded(db_name):
+    """
+    Checks if a database with db_name is already downloaded.
 
-    # Iterate through the base database and only store sequences with header that contains species of interest
-    with open(output_loc, "w") as output:
-        with gzip.open(f"{VFDB_LOC}", 'rt') as VFDB_file:
-            correct_search = False
-            for line in VFDB_file.readlines():
-                # Checks headers
-                if line.startswith(">"):
-                    if search_term in line:
-                        # If not first VF, add newline to separate from last VF
-                        if count > 0:
-                            output.write("\n")
-                        output.write(line.strip() + "\n")
-                        correct_search = True
-                        count +=1 # Add to count
-                    else:
-                        correct_search = False
-                # Print sequences if current header is correct search
-                else:
-                    if correct_search:
-                        output.write(line.strip())
+    Arguments:
+        db_name - Name of the requested database
+    
+    Return:
+        True/False if the database is downloaded.
+    """
+    # Find the location where the DB should be 
+    return os.path.exists(f"{SPIDER_DBS_FOLDER}/{DATABASE_FILENAMES[db_name]}")
 
-    return count, output_loc
+def download_db(db_name):
+    """
+    Downloads a database with requested db_name
+
+    Arguments:
+        db_name - Name of the requested database
+    """
+    os.makedirs(f"{SPIDER_DBS_FOLDER}", exist_ok=True)
+    
+    urlretrieve(DATABASE_URL[db_name], DATABASE_FILENAMES[db_name]) # In future add versioning to this
 
 def open_correct_format(file):
+    """
+    Opens files correctly if they are gzipped.
+    """
     if file.endswith(".gz"):
         return gzip.open(file, 'rt')
     else:
         return open(file, 'r')
-
-def prepare_custom_db(custom_db_loc):
+    
+def prepare_db(database_loc, search_term):
     """
-    Prepares a custom database for SPIDER crawling. Expected that custom database
-    is in fasta format.
+    Prepares database for SPIDER search. If a search term is specified, only
+    sequences with the search term in the fasta header will be included.
 
     Arguments:
-        custom_db_loc -- Path to the custom database
-    
+        search_term - String to look for in fasta headers
+        database_loc - Database to search
+
     Returns:
-        count -- Number of sequences in the database
-        db_loc -- Location of prepared database
+        count -- Number of VFs belonging to the search_term
+        tmp_db -- Location of the output database for SPIDER
     """
+    # If don't have the output folder yet, create it
+    os.makedirs(SPIDER_DBS_FOLDER, exist_ok=True)
 
+    # Temporary db location
+    tmp_db = f"{SPIDER_DBS_FOLDER}/spider_tmpdb_{uuid.uuid4().hex}.fasta"
+
+    # Write to the temp db and count sequences included
     count = 0
-    temp_db_out = f"spider_tmp_customdb_{uuid.uuid4().hex}.fasta"
-
-    with open_correct_format(custom_db_loc) as database:
-        with open(temp_db_out, "w") as output:
-            for line in database.readlines():
-                # Checks headers
-                if line.startswith(">"):
-                    # If not first sequence, add newline to separate sequence
-                    if count > 0:
-                        output.write("\n")
-                    output.write(line.strip() + "\n")
-                    count +=1 # Add to count
-                # Print sequences if current header is correct species
+    with open(tmp_db, "w") as out_db:
+        with open_correct_format(database_loc) as handle:
+            for record in SeqIO.parse(handle, "fasta"):
+                if search_term:
+                    if search_term.lower() in record.description.lower():
+                        out_db.write(f">{record.description}\n{record.seq}")
+                        count += 1
                 else:
-                    output.write(line.strip())
+                    out_db.write(f">{record.description}\n{record.seq}")
+                    count += 1
 
-    return count, temp_db_out
+    return count, tmp_db
