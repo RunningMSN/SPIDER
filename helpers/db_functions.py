@@ -104,10 +104,10 @@ def prepare_db(database_loc, search_term):
             for record in SeqIO.parse(handle, "fasta"):
                 if search_term:
                     if search_term.lower() in record.description.lower():
-                        out_db.write(f">{record.description}\n{record.seq}")
+                        out_db.write(f">{record.description}\n{record.seq}\n")
                         count += 1
                 else:
-                    out_db.write(f">{record.description}\n{record.seq}")
+                    out_db.write(f">{record.description}\n{record.seq}\n")
                     count += 1
 
     return count, tmp_db
