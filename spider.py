@@ -19,7 +19,6 @@ parser.add_argument("-d", "--directory",  type=str, required=False, help='Path t
 parser.add_argument("-db", "--database", type=str, required=False, help='Specifies the reference database to use. Database is expected in fasta or fasta.gz format. Special databases can be called using their name. For a list of available special databases, use the command --list_dbs.')
 parser.add_argument( "--list_dbs", action='store_true', required=False, help='Lists available special databases.')
 parser.add_argument("-s", "--search",  type=str, required=False, help='Extract a set of VFs from VFDB based on a search term. Terms with spaces must be in quotations "Staphylococcus aureus". This is HIGHLY RECOMMENDED if using any non-custom databases.')
-parser.add_argument("-c", "--custom_db", type=str, required=False, help='Search for sequences in a custom database. Expected in fasta or fasta.gz format.')
 # Crawl options
 parser.add_argument("-sl", "--slide_limit", type=float, required=False, default=5, help='Percent length of virulence factor that primers are allowed to slide. Default is 5%%.')
 parser.add_argument("-lt", "--length", type=float, required=False, default=20, help='Percent length tolerance. Default: 20%% (Range of 80-120%%)')
@@ -28,8 +27,8 @@ parser.add_argument("-p", "--primer_size", type=int, required=False, default=20,
 # Output options
 parser.add_argument("-o", "--output", type=str, required=False, help='Output file/folder. For SPIDER this will be a tab-separated values table. Default: stdout')
 # Extract options
-parser.add_argument("-e", "--fasta_extract", type=str, required=False, help='Uses SPIDER output file as input to generate a FASTA file with sequences of the desired sequences.')
-parser.add_argument("--translate", action='store_true', required=False, help='Translate fasta_extract to amino acid sequence rather than nucleotides. Assumes that the sequence begins with the start codon.')
+parser.add_argument("-e", "--extract", type=str, required=False, help='Uses SPIDER output file as input to generate a FASTA file with sequences of the desired sequences.')
+parser.add_argument("--translate", action='store_true', required=False, help='Translate extract to amino acid sequence rather than nucleotides. Assumes that the sequence begins with the start codon.')
 args = parser.parse_args()
 
 # Print help menu if no arguments supplied
@@ -37,7 +36,7 @@ if len(sys.argv) == 1:
     parser.print_help()
 
 
-# Run SPIDER
+# Run SPIDER search
 ## Print available databases
 if args.list_dbs:
     print(list_databases())
@@ -167,9 +166,9 @@ elif args.fasta or args.list or args.directory:
     else:
         print(f"SPIDER has finished running in {round((end_time - start_time)/60, 2)} minutes.", file=sys.stderr)
 
-# Extract sequences
-if args.fasta_extract:
-    obtained_seqs = extract_sequences(args.fasta_extract, args.translate, args.output)
+# Run SPIDER extract
+if args.extract:
+    obtained_seqs = extract_sequences(args.extract, args.translate, args.output)
 
     if obtained_seqs:
         print(f"Successfully extracted sequences from {args.fasta_extract}", file=sys.stderr)
