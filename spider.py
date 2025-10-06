@@ -53,24 +53,24 @@ if args.fasta or args.list or args.directory:
     # Check that assembly file exists
     if args.fasta:
         if not os.path.exists(args.fasta):
-            print(f"ERROR: Could not find an assembly file located at {args.fasta}")
+            print(f"ERROR: Could not find an assembly file located at {args.fasta}", file=sys.stderr)
             sys.exit(1)
     elif args.list:
         if not os.path.exists(args.list):
-            print(f"ERROR: Could not find assembly list located at {args.list}")
+            print(f"ERROR: Could not find assembly list located at {args.list}", file=sys.stderr)
             sys.exit(1)
     elif args.directory:
         if not os.path.exists(args.directory):
-            print(f"ERROR: Could not find directory located at {args.directory}")
+            print(f"ERROR: Could not find directory located at {args.directory}", file=sys.stderr)
             sys.exit(1)
     elif args.custom_db:
         if not os.path.exists(args.custom_db):
-            print(f"ERROR: Could not find database located at {args.custom_db}")
+            print(f"ERROR: Could not find database located at {args.custom_db}", file=sys.stderr)
             sys.exit(1)
 
     # Check for mode to run
     if args.search and args.custom_db:
-        print(f"ERROR: If using a custom database, do not use search in VFDB.")
+        print(f"ERROR: If using a custom database, do not use search in VFDB.", file=sys.stderr)
         sys.exit(1)
 
     # Grab all VFs for a particular search term
@@ -80,10 +80,10 @@ if args.fasta or args.list or args.directory:
         
         # Print output for VFs extracted
         if count == 0:
-            print(f"ERROR: {args.search} does not have any VFs in VFDB. Please check your spelling.")
+            print(f"ERROR: {args.search} does not have any VFs in VFDB. Please check your spelling.", file=sys.stderr)
             sys.exit(1)
         else:
-            print(f"{count} VFs were identified for {args.search}.")
+            print(f"{count} VFs were identified for {args.search}.", file=sys.stderr)
 
     # Grab custom database
     elif args.custom_db:
@@ -91,25 +91,25 @@ if args.fasta or args.list or args.directory:
 
         # Print output for custom sequences identified
         if count == 0:
-            print(f"ERROR: The {args.custom_db} did not contain any VFs.")
+            print(f"ERROR: The {args.custom_db} did not contain any VFs.", file=sys.stderr)
             sys.exit(1)
         else:
-            print(f"{count} sequences were identified for {args.custom_db}.")
+            print(f"{count} sequences were identified for {args.custom_db}.", file=sys.stderr)
 
     # Error if nothing supplied
     else:
-        print(f"ERROR: You must supply either a search term using -s/--species or custom database using -c/--custom_db.")
+        print(f"ERROR: You must supply either a search term using -s/--species or custom database using -c/--custom_db.", file=sys.stderr)
         sys.exit(1)
 
     # Track run time
     start_time = time.time()
     
     # Run the crawler
-    print(f"Beginning to crawl using the following settings:")
-    print(f"Primer Size: {args.primer_size}bp")
-    print(f"Slide Limit: {args.slide_limit}%")
-    print(f"Length Limit: {args.length}%")
-    print(f"Identity Limit: {args.identity}%")
+    print(f"Beginning to crawl using the following settings:", file=sys.stderr)
+    print(f"Primer Size: {args.primer_size}bp", file=sys.stderr)
+    print(f"Slide Limit: {args.slide_limit}%", file=sys.stderr)
+    print(f"Length Limit: {args.length}%", file=sys.stderr)
+    print(f"Identity Limit: {args.identity}%", file=sys.stderr)
     ## Individual assembly
     if args.fasta:
         results = crawl(args.fasta, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size)
@@ -130,14 +130,14 @@ if args.fasta or args.list or args.directory:
                 sys.exit(1)
 
         # Print number of samples identified
-        print(f"Identified {len(fasta_list)} assemblies to crawl.")
+        print(f"Identified {len(fasta_list)} assemblies to crawl.", file=sys.stderr)
         # Run crawler
         all_results = []
         count = 0
         for assembly in fasta_list:
             all_results.append(crawl(assembly, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size))
             count +=1 
-            print(f"Completed {count} of {len(fasta_list)} ({round(count/len(fasta_list)*100, 2)}%)")
+            print(f"Completed {count} of {len(fasta_list)} ({round(count/len(fasta_list)*100, 2)}%)", file=sys.stderr)
         results = pd.concat(all_results, ignore_index=True)
 
     # Output results
@@ -154,13 +154,13 @@ if args.fasta or args.list or args.directory:
     # Print complete message
     end_time = time.time()
     if end_time - start_time <= 60:
-        print(f"SPIDER has finished running in {round(end_time - start_time, 2)} seconds.")
+        print(f"SPIDER has finished running in {round(end_time - start_time, 2)} seconds.", file=sys.stderr)
     else:
-        print(f"SPIDER has finished running in {round((end_time - start_time)/60, 2)} minutes.")
+        print(f"SPIDER has finished running in {round((end_time - start_time)/60, 2)} minutes.", file=sys.stderr)
 
 # Extract sequences
 if args.fasta_extract:
     obtained_seqs = extract_sequences(args.fasta_extract, args.translate, args.output)
 
     if obtained_seqs:
-        print(f"Successfully extracted sequences from {args.fasta_extract}")
+        print(f"Successfully extracted sequences from {args.fasta_extract}", file=sys.stderr)
