@@ -72,6 +72,6 @@ python spider.py -e coagulase_search.txt --translate -o coagulase.fasta
 ## Full SPIDER Extract Parameters
 | Parameter    | Description                                                                                                                                                         | Required |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| e, --extract | Output of a SPIDER search for sequence(s) of interest in tab-separated-values format.                                                                               | Yes      |
+| -e, --extract | Output of a SPIDER search for sequence(s) of interest in tab-separated-values format.                                                                               | Yes      |
 | --translate    | Translates the extracted nucleotide sequences to amino acid sequences. Note that this function assumes that the extracted sequence is in the desired reading frame. | No       |
 | -o, --output  | Output file that will be generated. For SPIDER extract, this will be in FASTA format. Default: stdout                                                               | No       |
