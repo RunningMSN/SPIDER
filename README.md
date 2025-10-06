@@ -5,7 +5,7 @@ for sequences of interest inside of your whole genome assembly. Second, it can e
 those sequences of interest into a FASTA file for quickly analyzing genomic epidemiology.
 
 # Installation
-1. Download this Github repository
+1. Download or clone this GitHub repository
 2. SPIDER uses a conda environment to handle dependencies. Install the conda environment 
 from the provided environment.yml file using `conda env create -f environment.yml`
 3. Activate the SPIDER conda environment using the command `conda activate spider`
