@@ -130,12 +130,12 @@ elif args.fasta or args.list or args.directory:
             # Check to make sure all assemblies exist, if not exit and warn user
             valid_list, errors = list_exists(fasta_list)
             if not valid_list:
-                print(f"ERROR: The following assemblies in the provided list could not be found: {','.join(errors)}")
+                print(f"ERROR: The following assemblies in the provided list could not be found: {','.join(errors)}", file=sys.stderr)
                 sys.exit(1)
         elif args.directory:
             fasta_list = parse_directory(args.directory)
             if len(fasta_list) == 0:
-                print(f"ERROR: The directory {args.directory} did not contain any fasta files. Check that files exist that end in .fasta or .fna.")
+                print(f"ERROR: The directory {args.directory} did not contain any fasta files. Check that files exist that end in .fasta or .fna.", file=sys.stderr)
                 sys.exit(1)
 
         # Print number of samples identified
@@ -144,7 +144,7 @@ elif args.fasta or args.list or args.directory:
         all_results = []
         count = 0
         for assembly in fasta_list:
-            all_results.append(crawl(assembly, crawl_db_loc, args.slide_limit, args.length, args.identity, args.primer_size))
+            all_results.append(crawl(assembly, temp_crawl_db, args.slide_limit, args.length, args.identity, args.primer_size))
             count +=1 
             print(f"Completed {count} of {len(fasta_list)} ({round(count/len(fasta_list)*100, 2)}%)", file=sys.stderr)
         results = pd.concat(all_results, ignore_index=True)
