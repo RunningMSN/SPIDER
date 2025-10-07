@@ -522,9 +522,6 @@ def find_start_stop(table, temp_directory):
             contigs = SeqIO.index(f"{temp_directory}/reference.fasta", "fasta")
             contig_length = len(contigs[str(row['Contig'])].seq)
 
-
-            print(f"{row['Start']} - {row['End']}")
-
             # Extract 100 bp before and after start/end
             start_search = row['Start'] - 100
             
