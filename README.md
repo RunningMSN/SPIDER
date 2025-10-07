@@ -40,9 +40,11 @@ Search a list of genome assemblies for a sequence in the database `custom_db.fas
 | Output Options |
 | -o, --output | Output file that will be generated.  For SPIDER search, this will be a tab-separated-values file. If no output is specified, SPIDER will print to stdout. | No |
 | Additional Search options |
-| -sl, --slide_limit         | Percent length of a reference sequence that primers are allowed to slide.Default is 5 (5%). | No |
-| -lt, --length              | Percent length tolerance between an extracted amplicon and the reference sequence. Default is 20 (20%). This allows matches of 80-100% of the reference sequence. | No |
-| -it, --identity            | Percent identity tolerance between an extracted amplicon and the reference sequence. Anything above this threshold will be called positive. Default is 0 (0%). | No |
+| --overlaps | Checks if any of the identified sequences are overlapping one another. Default: False | No |
+| --scan_codons | Searches for nearest start and stop codons to the start and end of identified amplicons and if they are in frame with one another. Default: False | No |
+| -sl, --slide_limit | Percent length of a reference sequence that primers are allowed to slide. Default is 5 (5%). | No |
+| -lt, --length | Percent length tolerance between an extracted amplicon and the reference sequence. Default is 20 (20%). This allows matches of 80-100% of the reference sequence. | No |
+| -it, --identity | Percent identity tolerance between an extracted amplicon and the reference sequence. Anything above this threshold will be called positive. Default is 0 (0%). | No |
 | -p, --primer_size | Length of primers for SPIDER to use. Default is 20 (20nt). | No |
 
 # SPIDER Extract
