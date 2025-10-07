@@ -8,6 +8,8 @@ import sys
 import os
 import time
 import pandas as pd
+import re
+import shutil
 
 # Parse args
 parser = argparse.ArgumentParser(description='Sliding Primer In-silico Detection of Encoded Regions (SPIDER) - Uses in-silico PCR with sequential primers to identify virulence factors')
@@ -25,10 +27,12 @@ parser.add_argument("-lt", "--length", type=float, required=False, default=20, h
 parser.add_argument("-it", "--identity", type=float, required=False, default=0, help='Percent identity tolerance for calling true match. Anything about this threshold will be called positive hit. Default: 0%%')
 parser.add_argument("-p", "--primer_size", type=int, required=False, default=20, help='Length of primer to use. Default: 20bp')
 # Output options
-parser.add_argument("-o", "--output", type=str, required=False, help='Output file/folder. For SPIDER this will be a tab-separated values table. Default: stdout')
+parser.add_argument("-o", "--output", type=str, required=False, help='Output file/folder. For search this will be a tab-separated values table. For extract, this will be FASTA formatted. Default: stdout')
 # Extract options
 parser.add_argument("-e", "--extract", type=str, required=False, help='Uses SPIDER output file as input to generate a FASTA file with sequences of the desired sequences.')
-parser.add_argument("--translate", action='store_true', required=False, help='Translate extract to amino acid sequence rather than nucleotides. Assumes that the sequence begins with the start codon.')
+parser.add_argument("--translate", action='store_true', required=False, help='Translate extract to amino acid sequence rather than nucleotides. Assumes that the sequence begins with the start codon. Default: False')
+parser.add_argument("--separate", action='store_true', required=False, help='Separate extracted sequences into separate files for each target. Default: False')
+parser.add_argument("--overwrite", action='store_true', required=False, help='Separate extracted sequences into separate files for each target. Default: False')
 args = parser.parse_args()
 
 # Print help menu if no arguments supplied
@@ -168,7 +172,33 @@ elif args.fasta or args.list or args.directory:
 
 # Run SPIDER extract
 if args.extract:
-    obtained_seqs = extract_sequences(args.extract, args.translate, args.output)
+    # Validate the extraction arguments
+    error = False
+    illegal_folder_characters = re.compile(r"[<>/{}[\]~`.]")
+    if args.separate and not args.output:
+        print("ERROR: If using --separate, you must specify the name of an output folder using the -o/--output argument.", file=sys.stderr)
+        error = True
+    elif args.separate and illegal_folder_characters.search(args.output):
+        print("ERROR: If using --separate, the output is a folder. Your folder name contains illegal characters, please remove them.", file=sys.stderr)
+        error = True
+    elif args.output:
+        if os.path.exists(args.output):
+            if args.overwrite and os.path.isdir(args.output):
+                shutil.rmtree(args.output)
+            elif args.overwrite and os.path.isfile(args.output):
+                os.remove(args.output)
+            else:
+                print("ERROR: The output location already exists. If you would like to overwrite it, please use the --overwrite argument.", file=sys.stderr)
+                error = True
 
+    # If error in arguments, exit the program
+    if error: sys.exit(1)
+
+    # Extract sequences
+    obtained_seqs = extract_sequences(args.extract, args.translate, args.output, args.separate)
+
+    # Print success message
     if obtained_seqs:
-        print(f"Successfully extracted sequences from {args.fasta_extract}", file=sys.stderr)
+        print(f"Successfully extracted sequences from {args.extract}", file=sys.stderr)
+    else:
+        print(f"Could not extract sequences from {args.extract} due to an error.", file=sys.stderr)
