@@ -55,7 +55,6 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size,
         spider_results = find_start_stop(spider_results, temp_directory)
 
     # Cleanup temporary environment
-    print('Got here')
     cleanup(temp_directory)
 
     # Return results
