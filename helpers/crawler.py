@@ -11,8 +11,9 @@ from Bio.Align import PairwiseAligner
 from Bio.Seq import Seq
 from Bio import SeqIO
 from itertools import combinations
+import re
 
-def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size, check_overlaps):
+def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size, check_overlaps, check_start_stop):
     """
     Runs SPIDER to identify targets in the supplied fasta file.
 
@@ -46,11 +47,12 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size,
                 all_results.append(result)
     spider_results = pd.DataFrame(all_results, columns=SPIDER_RESULTS_COLUMNS)
 
-    print(spider_results)
-
     # Add warnings for overlaps
     if check_overlaps:
         spider_results = find_overlaps(spider_results)
+    # Add start and stop codons
+    if check_start_stop:
+        spider_results = find_start_stop(spider_results, temp_directory)
 
     # Cleanup temporary environment
     cleanup(temp_directory)
@@ -496,4 +498,89 @@ def find_overlaps(table):
                         table.at[idx, "Overlap"] += "; " + warning
                     else:
                         table.at[idx, "Overlap"] = warning
+    return table
+
+def find_start_stop(table, temp_directory):
+    """
+    Scans in silico amplicons and nearby sequences for start and stop codons.
+    
+    Arguments:
+        table - Table of results from SPIDER
+        temp_directory - Temporary directory used by SPIDER to search a sequence
+
+    Returns:
+        table - Table with appended columns for start_codon, stop_codon, and in-frame
+    """
+    table['Closest_Start_Codon'] = ""
+    table['Closest_Start_Codon_Matches_Amplicon'] = ""
+    table['Closest_Stop_Codon'] = ""
+    table['Closest_Stop_Codon_Matches_Amplicon'] = ""
+    table['Closest_Start_Stop_In_Frame'] = ""
+    for idx, row in table.iterrows():
+        if not row['Contig'] == "NA":
+            # Grab length of the contig to ensure that sliding doesn't exceed the ends
+            contigs = SeqIO.index(f"{temp_directory}/reference.fasta", "fasta")
+            contig_length = len(contigs[str(row['Contig'])].seq)
+
+
+            print(f"{row['Start']} - {row['End']}")
+
+            # Extract 100 bp before and after start/end
+            start_search = row['Start'] - 100
+            
+            # Make sure don't go off ends of contig
+            if start_search < 1:
+                start_search = 1
+            end_search = row['End'] + 100
+            if end_search > contig_length:
+                end_search = contig_length
+
+            # Grab sequence
+            extracted_seq, length = extract_target_sequence(row['Contig'], start_search, end_search, temp_directory)
+            if row['Strand'] == '-':
+                extracted_seq = reverse_complement(extracted_seq)
+            extracted_seq = str(extracted_seq)
+
+            # Find start codon locations
+            start_codon_idx = [codon.start() for codon in re.finditer('ATG', extracted_seq)]
+            if len(start_codon_idx) > 0:
+                start_codon_idx = np.array(start_codon_idx)
+                # Find distances from the start
+                start_codon_distances = start_codon_idx - 100
+                start_codon_distances_abs = abs(start_codon_distances)
+                closest_start_codon_idx = start_codon_idx[np.argmin(start_codon_distances_abs)]
+
+                # Add start codon result
+                closest_start_codon_position = closest_start_codon_idx - 100 + row['Start']
+                table.at[idx, "Closest_Start_Codon"] = closest_start_codon_position
+                table.at[idx, 'Closest_Start_Codon_Matches_Amplicon'] = closest_start_codon_position == row['Start']
+            else:
+                table.at[idx, "Closest_Start_Codon"] = "No start codons found"
+
+            # Find stop codon locations
+            stop_codons = ["TAA", "TAG", "TGA"]
+            stop_codon_idx = []
+            for stop_codon in stop_codons:
+                stop_codon_idx += [codon.start() for codon in re.finditer(stop_codon, extracted_seq)]
+
+            if len(stop_codon_idx) > 0:
+                stop_codon_idx = np.array(stop_codon_idx)
+
+                # Find distances from the end
+                stop_codon_distances = stop_codon_idx - (row['Target_Length'] + 100)
+                stop_codon_distances_abs = abs(stop_codon_distances)
+                closest_stop_codon_idx = stop_codon_idx[np.argmin(stop_codon_distances_abs)]
+
+                # Add stop codon result
+                closest_stop_codon_position = closest_stop_codon_idx - 100 + row['Start']
+                table.at[idx, "Closest_Stop_Codon"] = closest_stop_codon_position
+                table.at[idx, 'Closest_Stop_Codon_Matches_Amplicon'] = closest_stop_codon_position + 2 == row['End']
+            else:
+                table.at[idx, "Closest_Stop_Codon"] = "No stop codons found"
+
+            # Check that closest start and stop codons are in frame with one another
+            if len(start_codon_idx) > 0 and len(stop_codon_idx) > 0:
+                closest_in_frame = (closest_stop_codon_idx - closest_start_codon_idx) % 3 == 0
+                table.at[idx, "Closest_Start_Stop_In_Frame"] = closest_in_frame
+            
     return table

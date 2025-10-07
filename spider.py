@@ -27,6 +27,7 @@ parser.add_argument("-lt", "--length", type=float, required=False, default=20, h
 parser.add_argument("-it", "--identity", type=float, required=False, default=0, help='Percent identity tolerance for calling true match. Anything about this threshold will be called positive hit. Default: 0%%')
 parser.add_argument("-p", "--primer_size", type=int, required=False, default=20, help='Length of primer to use. Default: 20bp')
 parser.add_argument("--overlaps", action='store_true', required=False, help='Search results for overlapping in silico amplicons. Default: False')
+parser.add_argument("--scan_codons", action='store_true', required=False, help='Search for start and stop codons near ends of amplicons. Default: False')
 # Output options
 parser.add_argument("-o", "--output", type=str, required=False, help='Output file/folder. For search this will be a tab-separated values table. For extract, this will be FASTA formatted. Default: stdout')
 # Extract options
@@ -125,7 +126,7 @@ elif args.fasta or args.list or args.directory:
     print(f"Identity Limit: {args.identity}%", file=sys.stderr)
     ## Individual assembly
     if args.fasta:
-        results = crawl(args.fasta, temp_crawl_db, args.slide_limit, args.length, args.identity, args.primer_size, args.overlaps)
+        results = crawl(args.fasta, temp_crawl_db, args.slide_limit, args.length, args.identity, args.primer_size, args.overlaps, args.scan_codons)
     ## List of assemblies
     elif args.list or args.directory:
         # Parse list of assemblies
@@ -148,7 +149,7 @@ elif args.fasta or args.list or args.directory:
         all_results = []
         count = 0
         for assembly in fasta_list:
-            all_results.append(crawl(assembly, temp_crawl_db, args.slide_limit, args.length, args.identity, args.primer_size))
+            all_results.append(crawl(assembly, temp_crawl_db, args.slide_limit, args.length, args.identity, args.primer_size, args.overlaps, args.scan_codons))
             count +=1 
             print(f"Completed {count} of {len(fasta_list)} ({round(count/len(fasta_list)*100, 2)}%)", file=sys.stderr)
         results = pd.concat(all_results, ignore_index=True)
