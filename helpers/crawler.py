@@ -14,14 +14,14 @@ from itertools import combinations
 
 def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size, check_overlaps):
     """
-    Runs SPIDER to identify VFs in the supplied fasta file.
+    Runs SPIDER to identify targets in the supplied fasta file.
 
     Arguments:
         fasta -- Location of assembly to query
         db_loc -- Location of target datavase
         slide_limit -- Percentage of target gene that SPIDER can slide
-        length_limit -- Percentage limit of length for which a VF will validate
-        identity_limit -- Threshold identity at which to call a VF as present
+        length_limit -- Percentage limit of length for which a target will validate
+        identity_limit -- Threshold identity at which to call a target as present
         primer_size -- Size of primer for in-silico PCR
 
     Returns:
@@ -33,12 +33,12 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size,
     # Setup crawler environment and temp directory
     setup(fasta, temp_directory)
 
-    # Iterate through all VFs to test
+    # Iterate through all targets to test
     all_results = []
     with open(db_loc, "r") as database:
-        # Load VFs by header and sequence
+        # Load targets by header and sequence
         for header, sequence in zip(database, database):
-            results = identify_vf(header, sequence.strip(), slide_limit, primer_size, temp_directory, length_limit, identity_limit)
+            results = identify_target(header, sequence.strip(), slide_limit, primer_size, temp_directory, length_limit, identity_limit)
             for result in results:
                 # Add header to the result as first item
                 result = (fasta,header.strip().replace(">",""),) + result
@@ -90,13 +90,13 @@ def cleanup(temp_directory):
     shutil.rmtree(temp_directory)
 
 
-def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, length_limit, identity_limit):
+def identify_target(header, ref_sequence, slide_limit, primer_size, temp_directory, length_limit, identity_limit):
     """
-    Identifies the virulence factor if present.
+    Identifies the target sequence if present.
 
     Arguments:
-        header -- VF header
-        ref_sequence -- VF reference sequence
+        header -- target header
+        ref_sequence -- target reference sequence
         slide_limit -- User set slide limit for primers
         primer_size -- User provided primer length
         temp_directory -- Temporary directory to use
@@ -105,12 +105,12 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
 
     Returns:
         results -- List of tuples that contain results. Each tuple is in the format: 
-                   (Valid, Contig, Start, F_Slide, End, R_Slide, Strand, Identity, VF_length, 
+                   (Valid, Contig, Start, F_Slide, End, R_Slide, Strand, Identity, Target_length, 
                    Ref_Length, Coverage_Perc_Len, Coverage_Perc_Align, Message)
     """
-    # Make directory for the VF
-    vf_directory = f"{temp_directory}/{header.split(' ')[0].replace('>','')}"
-    os.makedirs(vf_directory)
+    # Make directory for the target
+    target_directory = f"{temp_directory}/{header.split(' ')[0].replace('>','')}"
+    os.makedirs(target_directory)
 
     # Find sequence length for number of primers to generate
     ref_length = len(ref_sequence)
@@ -119,65 +119,65 @@ def identify_vf(header, ref_sequence, slide_limit, primer_size, temp_directory, 
     if number_primers < 1: number_primers = 1
 
     # Generate the forward primers
-    with open(f"{vf_directory}/forward_primers.fasta", "w") as forward_primers:
+    with open(f"{target_directory}/forward_primers.fasta", "w") as forward_primers:
         for i in range(0, number_primers):
             forward_primers.write(f">forward_{i}\n{ref_sequence[i:i+primer_size]}\n")
 
     # Generate the reverse primers
-    with open(f"{vf_directory}/reverse_primers.fasta", "w") as reverse_primers:
+    with open(f"{target_directory}/reverse_primers.fasta", "w") as reverse_primers:
         for i in range(0, number_primers):
             reverse_primers.write(f">reverse_{i}\n{ref_sequence[ref_length-i-primer_size:ref_length-i]}\n")
 
     # BLAST both sets of primers
     for primer_set in ("forward_primers", "reverse_primers"):
-        blast_cmd = ["blastn", "-query", f"{vf_directory}/{primer_set}.fasta", 
+        blast_cmd = ["blastn", "-query", f"{target_directory}/{primer_set}.fasta", 
                      "-db", f"{temp_directory}/reference.fasta", 
                      "-outfmt", "6", "-word_size", f"{primer_size}", 
-                     "-out", f"{vf_directory}/{primer_set}.blast.txt"]
+                     "-out", f"{target_directory}/{primer_set}.blast.txt"]
         subprocess.run(blast_cmd)
         
     # Obtain primer matches
-    forward_matches, reverse_matches = parse_primer_matches(vf_directory)
+    forward_matches, reverse_matches = parse_primer_matches(target_directory)
     # Sort the primers into pairs
     primer_pairs, error = sort_primer_pairs(forward_matches, reverse_matches, ref_length)
     # Store returned output
     results = []
 
-    # Extract VF sequence for each primer pair
+    # Extract target sequence for each primer pair
     if len(primer_pairs) > 0:
-        vf_extracted_counter = 0
+        target_extracted_counter = 0
         for pair in primer_pairs:
-            contig, start, end, strand, forward_slide, reverse_slide = extract_vf_location(pair, forward_matches, reverse_matches, temp_directory)
+            contig, start, end, strand, forward_slide, reverse_slide = extract_target_location(pair, forward_matches, reverse_matches, temp_directory)
             
-            # Extract the VF sequence
-            vf_sequence, vf_length = extract_vf_sequence(contig, start, end, temp_directory)
+            # Extract the target sequence
+            target_sequence, target_length = extract_target_sequence(contig, start, end, temp_directory)
             
-            # Align the VF to get identity and coverage
-            identity, coverage_percent_length, coverage_alignment = align_vf(ref_sequence, vf_sequence, strand)
+            # Align the target to get identity and coverage
+            identity, coverage_percent_length, coverage_alignment = align_target(ref_sequence, target_sequence, strand)
             
-            # Check validity of VF
-            valid, error = validate_vf(identity, coverage_percent_length, length_limit, identity_limit)
+            # Check validity of target
+            valid, error = validate_target(identity, coverage_percent_length, length_limit, identity_limit)
 
-            # Add tuple for output: (Valid, Start, F_Slide, End, R_Slide, Strand, Identity, VF_length, Ref_Length, Coverage_Perc_Len, Coverage_Perc_Align, Error Message)
-            results.append((valid, contig, start, forward_slide, end, reverse_slide, strand, identity, vf_length, ref_length, coverage_percent_length, coverage_alignment, error))
+            # Add tuple for output: (Valid, Start, F_Slide, End, R_Slide, Strand, Identity, target_length, Ref_Length, Coverage_Perc_Len, Coverage_Perc_Align, Error Message)
+            results.append((valid, contig, start, forward_slide, end, reverse_slide, strand, identity, target_length, ref_length, coverage_percent_length, coverage_alignment, error))
     else:
         results.append((False, "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", ref_length, "NA", "NA", error))
 
     return results
 
-def parse_primer_matches(vf_directory):
+def parse_primer_matches(target_directory):
     """
-    Identifies the best primer match for VF.
+    Identifies the best primer match for target.
 
     Arguments:
-        vf_directory -- Temporary directory being used for the VF
+        target_directory -- Temporary directory being used for the target
     
     Returns:
         forward_matches - Pandas dataframe with best forward primer matches
         reverse_matches - Pandas dataframe with best reverse primer matches
     """
     # Parse the best forward primer match(es)
-    forward_matches = pd.read_csv(f"{vf_directory}/forward_primers.blast.txt", sep="\t", header=None, names=BLAST_COLUMNS_FMT_6)
+    forward_matches = pd.read_csv(f"{target_directory}/forward_primers.blast.txt", sep="\t", header=None, names=BLAST_COLUMNS_FMT_6)
     if len(forward_matches) > 0:
         # Set names to just the slide amount
         forward_matches["qseqid"] = forward_matches["qseqid"].str.replace("forward_", "")
@@ -194,7 +194,7 @@ def parse_primer_matches(vf_directory):
         forward_matches = None
     
     # Parse the best reverse primer match(es)
-    reverse_matches = pd.read_csv(f"{vf_directory}/reverse_primers.blast.txt", sep="\t", header=None, names=BLAST_COLUMNS_FMT_6)
+    reverse_matches = pd.read_csv(f"{target_directory}/reverse_primers.blast.txt", sep="\t", header=None, names=BLAST_COLUMNS_FMT_6)
     if len(reverse_matches) > 0:
         # Set names to just the slide amount
         reverse_matches["qseqid"] = reverse_matches["qseqid"].str.replace("reverse_", "")
@@ -213,25 +213,25 @@ def parse_primer_matches(vf_directory):
     return forward_matches, reverse_matches
 
 
-def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
+def sort_primer_pairs(forward_matches, reverse_matches, expected_target_length):
     """
     Identifies primer pairs. The total number of pairs will be whichever 
     direction primer had less hits. E.g. if forward primer was found once, but
     reverse was found twice, one pair of primers will be calculated.
 
     No validation of these primer matches is performed here. Pairs will be 
-    validated in a separate function before finalizing VF call.
+    validated in a separate function before finalizing target call.
 
     Arguments:
         forward_matches -- Pandas dataframe containing forward primer matches
         reverse_matches -- Pandas dataframe containing the reverse primer matches
-        expected_vf_length -- Expected length of the VF is the length of the reference
-                              VF sequence.
+        expected_target_length -- Expected length of the target is the length of the reference
+                              target sequence.
 
     Returns:
         primer_pairs_indices -- List of tuples containing indices of the 
         forward and reverse primers that form pairs
-        error -- Reason why VF failed to be identified
+        error -- Reason why target failed to be identified
     """
     # Store pairs as tuples of forward and reverse index
     primer_pairs_indices = []
@@ -265,7 +265,7 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
         # Calculate distance from expected length to get primer pairs distances
         if len(valid_ordered_pairs) > 0:
             # Calculate distances
-            valid_ordered_pairs["distance"] = abs(abs(valid_ordered_pairs["sstart_f"] - valid_ordered_pairs["send_r"]) - expected_vf_length)
+            valid_ordered_pairs["distance"] = abs(abs(valid_ordered_pairs["sstart_f"] - valid_ordered_pairs["send_r"]) - expected_target_length)
             
             # Sort by distance
             valid_ordered_pairs.sort_values(by="distance", ascending = True, inplace= True)
@@ -302,9 +302,9 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_vf_length):
     return primer_pairs_indices, error
 
 
-def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches, temp_directory):
+def extract_target_location(primer_pair_indices, forward_matches, reverse_matches, temp_directory):
     """
-    Returns the location of the virulence factor given a set of primer pair indices
+    Returns the location of the target given a set of primer pair indices
     for the forward and reverse BLAST searches.
 
     Arguments:
@@ -314,14 +314,14 @@ def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches, t
         reverse_matches -- Pandas dataframe containing the reverse primer matches
 
     Return:
-        contig -- Contig on which VF is located
+        contig -- Contig on which target is located
         start -- Start position
         end -- End position
         strand -- +/- strand
         forward_slide -- # of bases slide on forward primer
         reverse_slide -- # of bases slide on reverse primer
     """
-    # Obtain location of VF
+    # Obtain location of target
     contig = forward_matches.iloc[primer_pair_indices[0]]["sseqid"]
     strand = forward_matches.iloc[primer_pair_indices[0]]["strand"]
     
@@ -355,19 +355,19 @@ def extract_vf_location(primer_pair_indices, forward_matches, reverse_matches, t
     return contig, start, end, strand, forward_slide, reverse_slide
 
 
-def extract_vf_sequence(contig, start, end, temp_directory):
+def extract_target_sequence(contig, start, end, temp_directory):
     """
-    Extracts the virulence factor sequence using pyfaidx.
+    Extracts the target sequence using pyfaidx.
 
     Arguments:
-        contig -- Contig on which VF is located.
+        contig -- Contig on which target is located.
         start -- Start position
         end -- End position
         temp_directory -- Working directory for SPIDER
 
     Returns:
-        seq -- Virulence factor sequence that was identified
-        length -- Length of the virulence factor sequence extracted
+        seq -- Target sequence that was identified
+        length -- Length of the target sequence extracted
     """
     genome = Fasta(f"{temp_directory}/reference.fasta")
     contig = str(contig)
@@ -378,53 +378,53 @@ def extract_vf_sequence(contig, start, end, temp_directory):
     return seq, length
 
 
-def align_vf(reference_sequence, vf_sequence, vf_strand):
+def align_target(reference_sequence, target_sequence, target_strand):
     """
-    Aligns VF sequence to the reference sequence.
+    Aligns target sequence to the reference sequence.
 
     Arguments:
-        reference_sequence -- Target virulence factor sequence
-        vf_sequence -- Extracted sequence from in-silico PCR
-        vf_strand -- Which strand the extracted VF was identified on.
+        reference_sequence -- Target sequence
+        target_sequence -- Extracted sequence from in-silico PCR
+        target_strand -- Which strand the extracted target was identified on.
                      This is used to determine whether reverse complement
                      is needed.
 
     Returns:
-        identity -- Percent identity between VF sequence and reference
-        coverage_percent_length -- Length of vf_sequence divided by the length of the reference
-        coverage_alignment -- Alternative coverage metric that ignores gaps. Length of vf_sequence minus gaps divided by length of the reference.
+        identity -- Percent identity between target sequence and reference
+        coverage_percent_length -- Length of target_sequence divided by the length of the reference
+        coverage_alignment -- Alternative coverage metric that ignores gaps. Length of target_sequence minus gaps divided by length of the reference.
     """
 
-     # Create pairwise alignment of the reference and vf_sequence
+     # Create pairwise alignment of the reference and target_sequence
     aligner = PairwiseAligner(scoring="blastn")
     aligner.mode = 'global'
 
     # Reverse complement if - strand
-    if vf_strand == "-":
-        vf_sequence = reverse_complement(vf_sequence)
+    if target_strand == "-":
+        target_sequence = reverse_complement(target_sequence)
 
     # Grab the best alignment
-    alignment = aligner.align(reference_sequence, vf_sequence)[0]
+    alignment = aligner.align(reference_sequence, target_sequence)[0]
     # Number of matches is the number of | characters in the printout
     matches = alignment.format().count("|")
     # Identity is the number of matches over the total length, multiply by 100 for %
     identity = round(matches/alignment.length*100, 2)
     # Simple coverage metric that looks at length discrepency
-    coverage_percent_length = round(len(vf_sequence)/len(reference_sequence)*100, 2)
+    coverage_percent_length = round(len(target_sequence)/len(reference_sequence)*100, 2)
     # Alternative coverage metric that does not count gaps
-    coverage_alignment = round((len(vf_sequence) - alignment[1].count("-"))/len(reference_sequence)*100, 2)
+    coverage_alignment = round((len(target_sequence) - alignment[1].count("-"))/len(reference_sequence)*100, 2)
 
     return identity, coverage_percent_length, coverage_alignment
 
 
-def validate_vf(identity, coverage_percent_length, length_limit, identity_limit):
+def validate_target(identity, coverage_percent_length, length_limit, identity_limit):
     """
-    Validates that a VF meets criteria to be called.
+    Validates that a target meets criteria to be called.
 
     Arguments:
-        reference_sequence -- Target virulence factor sequence
-        vf_sequence -- Extracted sequence from in-silico PCR
-        vf_strand -- Which strand the extracted VF was identified on.
+        reference_sequence -- Target sequence
+        target_sequence -- Extracted sequence from in-silico PCR
+        target_strand -- Which strand the extracted target was identified on.
                      This is used to determine whether reverse complement
                      is needed.
         length_limit -- Argument for length limit provided by the user.
@@ -434,7 +434,7 @@ def validate_vf(identity, coverage_percent_length, length_limit, identity_limit)
 
     Return:
         valid -- True or false if valid or not
-        error -- Reason that VF was not validated
+        error -- Reason that target was not validated
     """
     valid = False
     error = ""

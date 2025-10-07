@@ -12,17 +12,17 @@ import re
 import shutil
 
 # Parse args
-parser = argparse.ArgumentParser(description='Sliding Primer In-silico Detection of Encoded Regions (SPIDER) - Uses in-silico PCR with sequential primers to identify virulence factors')
+parser = argparse.ArgumentParser(description='Sliding Primer In-silico Detection of Encoded Regions (SPIDER) - Uses in-silico PCR with sequential primers to identify microbial target sequences.')
 # Query options
-parser.add_argument("-f", "--fasta",  type=str, required=False, help='Path to FASTA file which will be scanned for virulence factors.')
-parser.add_argument("-l", "--list",  type=str, required=False, help='Path to txt file containing a list of paths to FASTA files to identify virulence factors. Each FASTA file should be on a new line.')
+parser.add_argument("-f", "--fasta",  type=str, required=False, help='Path to FASTA file which will be scanned for targets.')
+parser.add_argument("-l", "--list",  type=str, required=False, help='Path to txt file containing a list of paths to FASTA files to identify targets. Each FASTA file should be on a new line.')
 parser.add_argument("-d", "--directory",  type=str, required=False, help='Path to directory containing assemblies in FASTA format (.fasta/.fna)')
 # Database options
 parser.add_argument("-db", "--database", type=str, required=False, help='Specifies the reference database to use. Database is expected in fasta or fasta.gz format. Special databases can be called using their name. For a list of available special databases, use the command --list_dbs.')
 parser.add_argument( "--list_dbs", action='store_true', required=False, help='Lists available special databases.')
-parser.add_argument("-s", "--search",  type=str, required=False, help='Extract a set of VFs from VFDB based on a search term. Terms with spaces must be in quotations "Staphylococcus aureus". This is HIGHLY RECOMMENDED if using any non-custom databases.')
+parser.add_argument("-s", "--search",  type=str, required=False, help='Extract a set of targets from database based on a search term. Terms with spaces must be in quotations "Staphylococcus aureus". This is HIGHLY RECOMMENDED if using any non-custom databases.')
 # Crawl options
-parser.add_argument("-sl", "--slide_limit", type=float, required=False, default=5, help='Percent length of virulence factor that primers are allowed to slide. Default is 5%%.')
+parser.add_argument("-sl", "--slide_limit", type=float, required=False, default=5, help='Percent length of target that primers are allowed to slide. Default is 5%%.')
 parser.add_argument("-lt", "--length", type=float, required=False, default=20, help='Percent length tolerance. Default: 20%% (Range of 80-120%%)')
 parser.add_argument("-it", "--identity", type=float, required=False, default=0, help='Percent identity tolerance for calling true match. Anything about this threshold will be called positive hit. Default: 0%%')
 parser.add_argument("-p", "--primer_size", type=int, required=False, default=20, help='Length of primer to use. Default: 20bp')
@@ -61,7 +61,7 @@ elif args.fasta or args.list or args.directory:
         input_errors += 1
     ## Too few inputs
     if num_assembly_format_provided == 0:
-        print(f"ERROR: An assembly file (FASTA), list of assemblies, or directory contain assemblies must be specified to identify virulence factors/sequences.",  file=sys.stderr)
+        print(f"ERROR: An assembly file (FASTA), list of assemblies, or directory contain assemblies must be specified to identify target sequences.",  file=sys.stderr)
         input_errors +=1
 
     ## No database specified
