@@ -55,6 +55,7 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size,
         spider_results = find_start_stop(spider_results, temp_directory)
 
     # Cleanup temporary environment
+    print('Got here')
     cleanup(temp_directory)
 
     # Return results
@@ -529,7 +530,6 @@ def find_start_stop(table, temp_directory):
             if start_search < 1:
                 start_search = 1
             start_dist = row['Start'] - start_search
-            print(f"Start distance: {start_dist}")
             end_search = row['End'] + 100
             if end_search > contig_length:
                 end_search = contig_length
@@ -566,8 +566,6 @@ def find_start_stop(table, temp_directory):
                 stop_codon_idx = np.array(stop_codon_idx)
 
                 # Find distances from the end
-                print(row['End'])
-                
                 stop_codon_distances = stop_codon_idx - (row['Target_Length'] - 2 + start_dist)
                 stop_codon_distances_abs = abs(stop_codon_distances)
                 closest_stop_codon_idx = stop_codon_idx[np.argmin(stop_codon_distances_abs)]
