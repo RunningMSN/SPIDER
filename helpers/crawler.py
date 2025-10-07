@@ -528,6 +528,8 @@ def find_start_stop(table, temp_directory):
             # Make sure don't go off ends of contig
             if start_search < 1:
                 start_search = 1
+            start_dist = row['Start'] - start_search
+            print(f"Start distance: {start_dist}")
             end_search = row['End'] + 100
             if end_search > contig_length:
                 end_search = contig_length
@@ -543,12 +545,12 @@ def find_start_stop(table, temp_directory):
             if len(start_codon_idx) > 0:
                 start_codon_idx = np.array(start_codon_idx)
                 # Find distances from the start
-                start_codon_distances = start_codon_idx - 100
+                start_codon_distances = start_codon_idx - start_dist
                 start_codon_distances_abs = abs(start_codon_distances)
                 closest_start_codon_idx = start_codon_idx[np.argmin(start_codon_distances_abs)]
 
                 # Add start codon result
-                closest_start_codon_position = closest_start_codon_idx - 100 + row['Start']
+                closest_start_codon_position = closest_start_codon_idx - start_dist + row['Start']
                 table.at[idx, "Closest_Start_Codon"] = closest_start_codon_position
                 table.at[idx, 'Closest_Start_Codon_Matches_Amplicon'] = closest_start_codon_position == row['Start']
             else:
@@ -564,12 +566,14 @@ def find_start_stop(table, temp_directory):
                 stop_codon_idx = np.array(stop_codon_idx)
 
                 # Find distances from the end
-                stop_codon_distances = stop_codon_idx - (row['Target_Length'] + 100)
+                print(row['End'])
+                
+                stop_codon_distances = stop_codon_idx - (row['Target_Length'] - 2 + start_dist)
                 stop_codon_distances_abs = abs(stop_codon_distances)
                 closest_stop_codon_idx = stop_codon_idx[np.argmin(stop_codon_distances_abs)]
 
                 # Add stop codon result
-                closest_stop_codon_position = closest_stop_codon_idx - 100 + row['Start']
+                closest_stop_codon_position = closest_stop_codon_idx - start_dist + row['Start']
                 table.at[idx, "Closest_Stop_Codon"] = closest_stop_codon_position
                 table.at[idx, 'Closest_Stop_Codon_Matches_Amplicon'] = closest_stop_codon_position + 2 == row['End']
             else:
