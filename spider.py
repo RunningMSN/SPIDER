@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description='Sliding Primer In-silico Detection
 parser.add_argument("-f", "--fasta",  type=str, required=False, help='Path to FASTA file which will be scanned for targets.')
 parser.add_argument("-l", "--list",  type=str, required=False, help='Path to txt file containing a list of paths to FASTA files to identify targets. Each FASTA file should be on a new line.')
 parser.add_argument("-d", "--directory",  type=str, required=False, help='Path to directory containing assemblies in FASTA format (.fasta/.fna)')
+parser.add_argument("-a", "--annotation", type=str, required=False, help='Annotation file associated with the de novo assembly. When included, SPIDER will check if sequences extracted correspond to annotations. Required to be in GFF3 format. Default: None')
 # Database options
 parser.add_argument("-db", "--database", type=str, required=False, help='Specifies the reference database to use. Database is expected in fasta or fasta.gz format. Special databases can be called using their name. For a list of available special databases, use the command --list_dbs.')
 parser.add_argument( "--list_dbs", action='store_true', required=False, help='Lists available special databases.')
@@ -89,7 +90,16 @@ elif args.fasta or args.list or args.directory:
         if not os.path.exists(args.directory):
             print(f"ERROR: Could not find directory located at {args.directory}", file=sys.stderr)
             input_errors += 1
-
+    
+    ## Annotation provided, but not with a single sequence input
+    if args.annotation and not args.fasta:
+        print(f"ERROR: Annotations can only be used with a single query sequence at a time. Please specify the query using -f/--fasta flag.", file=sys.stderr)
+        input_errors += 1
+    ## Annotation provided, but does not exist
+    if args.annotation:
+        if not os.path.exists(args.annotation):
+            print(f"ERROR: Could not find the annotation file {args.annotation}, check that this file exists.", file=sys.stderr)
+            input_errors += 1
     # If input errors exist, end the program.
     if input_errors > 0:
         sys.exit(1)
@@ -126,7 +136,7 @@ elif args.fasta or args.list or args.directory:
     print(f"Identity Limit: {args.identity}%", file=sys.stderr)
     ## Individual assembly
     if args.fasta:
-        results = crawl(args.fasta, temp_crawl_db, args.slide_limit, args.length, args.identity, args.primer_size, args.overlaps, args.scan_codons)
+        results = crawl(args.fasta, temp_crawl_db, args.slide_limit, args.length, args.identity, args.primer_size, args.overlaps, args.scan_codons, args.annotation)
     ## List of assemblies
     elif args.list or args.directory:
         # Parse list of assemblies
@@ -149,7 +159,7 @@ elif args.fasta or args.list or args.directory:
         all_results = []
         count = 0
         for assembly in fasta_list:
-            all_results.append(crawl(assembly, temp_crawl_db, args.slide_limit, args.length, args.identity, args.primer_size, args.overlaps, args.scan_codons))
+            all_results.append(crawl(assembly, temp_crawl_db, args.slide_limit, args.length, args.identity, args.primer_size, args.overlaps, args.scan_codons, args.annotation))
             count +=1 
             print(f"Completed {count} of {len(fasta_list)} ({round(count/len(fasta_list)*100, 2)}%)", file=sys.stderr)
         results = pd.concat(all_results, ignore_index=True)

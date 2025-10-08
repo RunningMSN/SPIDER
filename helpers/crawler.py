@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 import math
-from helpers.settings import BLAST_COLUMNS_FMT_6, SPIDER_RESULTS_COLUMNS
+from helpers.settings import BLAST_COLUMNS_FMT_6, SPIDER_RESULTS_COLUMNS, GFF3_COLUMNS
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
@@ -12,8 +12,9 @@ from Bio.Seq import Seq
 from Bio import SeqIO
 from itertools import combinations
 import re
+import sys
 
-def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size, check_overlaps, check_start_stop):
+def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size, check_overlaps, check_start_stop, annotation):
     """
     Runs SPIDER to identify targets in the supplied fasta file.
 
@@ -24,6 +25,8 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size,
         length_limit -- Percentage limit of length for which a target will validate
         identity_limit -- Threshold identity at which to call a target as present
         primer_size -- Size of primer for in-silico PCR
+        check_overlap -- True/false check if amplicons in same sample are overlapping
+        check_start_stop -- True/false check for closest start/stop codons near the extracted amplicon
 
     Returns:
         df_results -- Results of crawler in the form of pandas dataframe
@@ -53,6 +56,9 @@ def crawl(fasta, db_loc, slide_limit, length_limit, identity_limit, primer_size,
     # Add start and stop codons
     if check_start_stop:
         spider_results = find_start_stop(spider_results, temp_directory)
+    if annotation:
+        spider_results = find_annotations(spider_results, annotation, temp_directory)
+
 
     # Cleanup temporary environment
     cleanup(temp_directory)
@@ -581,4 +587,36 @@ def find_start_stop(table, temp_directory):
                 closest_in_frame = (closest_stop_codon_idx - closest_start_codon_idx) % 3 == 0
                 table.at[idx, "Closest_Start_Stop_In_Frame"] = closest_in_frame
             
+    return table
+
+def find_annotations(table, annotation, temp_directory):
+    try:
+        # Create temporary table
+        mod_table = table
+        mod_table['Annotation_Match'] = ""
+        # Read GFF3
+        ann_table = pd.read_csv(annotation, comment="#", sep="\t", header=None, names=GFF3_COLUMNS)
+        ann_table = ann_table[ann_table["type"] == "gene"]
+        ann_table["append"] = ann_table['start'].astype(str) + "-" + ann_table['end'].astype(str) + ":" + ann_table['attributes'].astype(str)
+
+        # Go through each entry
+        for idx, row in mod_table.iterrows():
+            if not row['Contig'] == "NA":
+                ann_filtered = ann_table[(ann_table['strand'] == row['Strand']) & (row['End'] >= ann_table['start']) & (ann_table['end'] >= row['Start'])]
+                if len(ann_filtered) > 0:
+                    # Insert all overlapping annotated genes
+                    mod_table.at[idx, "Annotation_match"] = ";".join(ann_filtered['append'])
+        return mod_table
+    except FileNotFoundError:
+        print(f"ERROR: The file {annotation} does not exist.", file=sys.stderr)
+    except pd.errors.EmptyDataError:
+        print(f"ERROR: The file {annotation} is empty.", file=sys.stderr)
+    except pd.errors.ParserError:
+        print(f"ERROR: The file {annotation} is malformed.", file=sys.stderr)
+    except KeyError:
+        print(f"ERROR: The file {annotation} is not in the correct format. Make sure your input to --annotation is a valid GFF3 file with 9 columns.", file=sys.stderr)
+    except UnicodeDecodeError:
+        print(f"ERROR: The file {annotation} is not in the correct format. Make sure your input to --annotation is a valid GFF3 file with 9 columns.", file=sys.stderr)
+    except:
+        print("ERROR: An error occured while trying to parse annotations. Annotations will not be parsed.", file=sys.stderr)
     return table
