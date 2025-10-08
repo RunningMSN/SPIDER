@@ -34,6 +34,7 @@ Search a list of genome assemblies for a sequence in the database `custom_db.fas
 | -f, --fasta | Path to a single genome sequence | Yes, only one of these options at a time |
 | -l, --list | Path to a list of genome sequences. This file is expected to contain paths to genome sequences, each on a newline. |
 | -d, --directory | Path to a directory. SPIDER will look for any files that end in .fasta or .fna inside of this directory |
+| -a, --annotation | Path to a GFF3 formatted annotation file. When included, SPIDER will compare detected amplicons to the annotations and check for overlap with any annotations. This feature only works with a single fasta input at a time. | No |
 | Database Options |
 | -db, --database | Either a keyword for a pre-compiled database, or path to a custom database in FASTA format.| Yes |
 | --list_dbs | Provides a list of pre-compiled databases that can be searched. This is a stand-alone command that can be run without specifying a query and database. | No |
