@@ -1,12 +1,18 @@
 SPIDER_DBS_FOLDER = "spider_databases"
 
 # List of available databases
-DATABASE_DESCRIPTIONS = {"vfdb": "Virulence Factor Database"}
-DATABASE_URL = {"vfdb": "https://www.mgc.ac.cn/VFs/Down/VFDB_setA_nt.fas.gz"}
-DATABASE_FILENAMES = {"vfdb": "VFDB_setA_nt.fas.gz"}
+DATABASE_DESCRIPTIONS = {
+	"vfdb": "Virulence Factor Database"
+	}
+DATABASE_URL = {
+	"vfdb": "https://www.mgc.ac.cn/VFs/Down/VFDB_setA_nt.fas.gz"
+	}
+DATABASE_FILENAMES = {
+	"vfdb": "VFDB_setA_nt.fas.gz"
+	}
 
 
-# Helpers
+# Table headers
 BLAST_COLUMNS_FMT_6 = (
     "qseqid",    # Query sequence ID
     "sseqid",    # Subject (database) sequence ID
@@ -33,9 +39,21 @@ SPIDER_RESULTS_COLUMNS = (
 	"R_Slide",              # Reverse slide in SPIDER
 	"Strand",               # Strand SPIDER detected VF on
 	"Identity",             # Identity between SPIDER sequence detected and reference
-	"VF_length",            # Length of SPIDER detected sequence
+	"Target_Length",            # Length of SPIDER detected sequence
 	"Ref_Length",           # Length of reference seqeunce
 	"Coverage_Perc_Len",    # Percentage length difference between SPIDER and reference sequence
 	"Coverage_Perc_Align",  # Percentage coverage based on alignment between SPIDER and reference sequence
 	"Message"               # SPIDER message for failures/warnings
 	)
+
+GFF3_COLUMNS = (
+	"seqid",
+	"source",
+	"type",
+	"start",
+	"end",
+	"score",
+	"strand",
+	"phase",
+	"attributes"
+)
