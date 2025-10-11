@@ -35,6 +35,8 @@ parser.add_argument("-o", "--output", type=str, required=False, help='Output fil
 parser.add_argument("-e", "--extract", type=str, required=False, help='Uses SPIDER output file as input to generate a FASTA file with sequences of the desired sequences.')
 parser.add_argument("--translate", action='store_true', required=False, help='Translate extract to amino acid sequence rather than nucleotides. Assumes that the sequence begins with the start codon. Default: False')
 parser.add_argument("--separate", action='store_true', required=False, help='Separate extracted sequences into separate files for each target. Default: False')
+parser.add_argument("--upstream", type=int, default=0, required=False, help='Number of nucleotides upstream of amplicon to include in extraction. Default: 0')
+parser.add_argument("--downstream", type=int, default=0, required=False, help='Number of nucleotides downstream of amplicon to include in extraction. Default: 0')
 parser.add_argument("--overwrite", action='store_true', required=False, help='Separate extracted sequences into separate files for each target. Default: False')
 args = parser.parse_args()
 
@@ -193,7 +195,8 @@ if args.extract:
     elif args.separate and illegal_folder_characters.search(args.output):
         print("ERROR: If using --separate, the output is a folder. Your folder name contains illegal characters, please remove them.", file=sys.stderr)
         error = True
-    elif args.output:
+    # Check if output already exists, and remove if overwriting
+    if args.output:
         if os.path.exists(args.output):
             if args.overwrite and os.path.isdir(args.output):
                 shutil.rmtree(args.output)
@@ -202,12 +205,19 @@ if args.extract:
             else:
                 print("ERROR: The output location already exists. If you would like to overwrite it, please use the --overwrite argument.", file=sys.stderr)
                 error = True
+    # Check if upstream and downstream are valid
+    if args.upstream < 0:
+        print("ERROR: The number of upstream bases to extract must be an integer >= 0", file=sys.stderr)
+        error = True
+    if args.downstream < 0:
+        print("ERROR: The number of upstream bases to extract must be an integer >= 0", file=sys.stderr)
+        error = True
 
     # If error in arguments, exit the program
     if error: sys.exit(1)
 
     # Extract sequences
-    obtained_seqs = extract_sequences(args.extract, args.translate, args.output, args.separate)
+    obtained_seqs = extract_sequences(args.extract, args.translate, args.output, args.separate, args.upstream, args.downstream)
 
     # Print success message
     if obtained_seqs:
