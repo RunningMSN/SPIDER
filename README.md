@@ -49,7 +49,9 @@ Search a list of genome assemblies for a sequence in the database `custom_db.fas
 | -p, --primer_size | Length of primers for SPIDER to use. Default is 20 (20nt). | No |
 
 # SPIDER Extract
-SPIDER can quickly extract the sequences of amplicons identified by the program. 
+SPIDER can quickly extract the sequences of amplicons identified by the program. Sequences
+will be extracted in the same orientation as your reference sequence, so sequences on 
+opposite strands will be reverse complemented to display in the same direction.
 To run this command, it is requited that a SPIDER search is run first, and the output is
 saved to a file. SPIDER will parse the output of the search, and extract all sequences
 that were flagged as valid by the search.
@@ -57,7 +59,7 @@ that were flagged as valid by the search.
 ## Examples
 
 Extract the nucleotide sequence of search using the custom database `custom_db.fasta` in 
-the genome of `assembly.fasta`.
+the genome of `assembly.fasta`. Note the first line is a SPIDER search from the above section.
 
 ```
 python spider.py -f assembly.fasta -c custom_db.fasta -o search_custom_db.txt
@@ -65,7 +67,8 @@ python spider.py -e search_custom_db.txt -o assembly_custom_db.fasta
 ```
 
 Extract the amino acid sequences of the coagulase gene from all assemblies in the directory 
-`assemblies` using the reference sequence from VFDB.
+`assemblies` using the reference sequence from VFDB. Note the first line is a SPIDER search 
+from the above section.
 
 ```
 python spider.py -d assemblies -db vfdb -s "Staphylococcus aureus" -o coagulase_search.txt
@@ -75,7 +78,7 @@ python spider.py -e coagulase_search.txt --translate -o coagulase.fasta
 ## Full SPIDER Extract Parameters
 | Parameter | Description | Required |
 | - | - | - |
-| -e, --extract | Output of a SPIDER search for sequence(s) of interest in tab-separated-values format. | Yes |
+| -e, --extract | Output of a SPIDER search for sequence(s) of interest in tab-separated-values format. Note that SPIDER assumes that your sequences are still located in their original location when you performed the search. | Yes |
 | -o, --output | Output file that will be generated. For SPIDER extract, this will be in FASTA format. If using the --separate option, this should be the name of a folder. Default: stdout | No |
 | --translate | Translates the extracted nucleotide sequences to amino acid sequences. Note that this function assumes that the extracted sequence is in the desired reading frame. | No |
 | --upstream | Number of nucleotides upstream of the desired amplicon to extract. Default: 0 (start of desired sequence) | No |
