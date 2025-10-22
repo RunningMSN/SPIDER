@@ -1,6 +1,6 @@
 # Sliding Primer *In silico* Detection of Encoded Regions (SPIDER)
 SPIDER is a reference based *in silico* PCR based tool for detecting microbial sequences 
-of interest for genome assemblies. It features two key functions. First, it will search 
+of interest from genome assemblies. It features two key functions. First, it will search 
 for sequences of interest inside of your whole genome assembly. Second, it can extract
 those sequences of interest into a FASTA file for quickly analyzing genomic epidemiology.
 
