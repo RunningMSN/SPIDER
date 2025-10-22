@@ -38,6 +38,7 @@ Search a list of genome assemblies for a sequence in the database `custom_db.fas
 | Database Options |
 | -db, --database | Either a keyword for a pre-compiled database, or path to a custom database in FASTA format.| Yes |
 | --list_dbs | Provides a list of pre-compiled databases that can be searched. This is a stand-alone command that can be run without specifying a query and database. | No |
+| -s, --search | This is a search term. If specified, the database will be filtered to FASTA headers that contain this term. | No |
 | Output Options |
 | -o, --output | Output file that will be generated.  For SPIDER search, this will be a tab-separated-values file. If no output is specified, SPIDER will print to stdout. | No |
 | Additional Search options |
@@ -47,6 +48,19 @@ Search a list of genome assemblies for a sequence in the database `custom_db.fas
 | -lt, --length | Percent length tolerance between an extracted amplicon and the reference sequence. Default is 20 (20%). This allows matches of 80-100% of the reference sequence. | No |
 | -it, --identity | Percent identity tolerance between an extracted amplicon and the reference sequence. Anything above this threshold will be called positive. Default is 0 (0%). | No |
 | -p, --primer_size | Length of primers for SPIDER to use. Default is 20 (20nt). | No |
+
+## Database Shortcuts
+SPIDER includes shortcuts to search common databases. To use a pre-compiled database, use its' keyword in the `-db` argument. 
+For example `python spider.py -f assembly.fasta -db vfdb` will search `assembly.fasta` for all virulence factors included in the Virulence Factor Database (VFDB). 
+The `-s/--search` keywords can be used to filter the database for genes of interest. For example, searching for `ExoU` in VFDB can be performed
+with `python spider.py -f assembly.fasta -db vfdb -s ExoU`.
+
+| Database | Keyword | Citation |
+| - | - | -|
+| Virulence Factor Database (VFDB) | vfdb | Chen L, Zheng D, Liu B, Yang J, Jin Q. VFDB 2016: hierarchical and refined dataset for big data analysis--10 years on. Nucleic Acids Res. 2016;44(D1):D694-D697. doi:10.1093/nar/gkv1239 |
+
+If there are additional existing databases you would like to see added to this tool, please open an issue on GitHub.
+
 
 # SPIDER Extract
 SPIDER can quickly extract the sequences of amplicons identified by the program. Sequences
