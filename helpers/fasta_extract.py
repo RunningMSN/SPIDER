@@ -38,12 +38,12 @@ def extract_sequences(input_tsv, translate, output, separate, upstream, downstre
 				# Grab sequence. Assumes that file is where it was when entered into SPIDER.
 				seq, start_position, end_position = get_sequence(row["Query"], row["Contig"], int(row["Start"]), int(row["End"]), row["Strand"], upstream, downstream)
 				# Create header
-				header = f'>{os.path.basename(row['Query'])}\t{row["Name"]}\tcontig={row['Contig']};start={start_position};end={end_position}'
+				header = f'>{os.path.basename(row['Query'])}\t{row['Name']}\tcontig={row['Contig']};start={start_position};end={end_position}'
 				# Translate if needed
 				if translate:
 					type = "AA"
 					if not seq.lower().startswith("atg"):
-						print(f"WARNING: The sequence for {row["Name"]} in {row["Query"]} does not start with ATG.", file=sys.stderr)
+						print(f"WARNING: The sequence for {row['Name']} in {row['Query']} does not start with ATG.", file=sys.stderr)
 					seq = translate_seq(seq)
 				# Wrap sequence for nicer output
 				wrapped_seq = wrap_sequence(seq)
