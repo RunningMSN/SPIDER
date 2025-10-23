@@ -67,7 +67,7 @@ def download_db(db_name):
     """
     os.makedirs(f"{SPIDER_DBS_FOLDER}", exist_ok=True)
     
-    urlretrieve(DATABASE_URL[db_name], DATABASE_FILENAMES[db_name]) # In future add versioning to this
+    urlretrieve(DATABASE_URL[db_name], f"{SPIDER_DBS_FOLDER}/{DATABASE_FILENAMES[db_name]}") # In future add versioning to this
 
 def open_correct_format(file):
     """
