@@ -303,9 +303,9 @@ def sort_primer_pairs(forward_matches, reverse_matches, expected_target_length):
     elif forward_matches is None and reverse_matches is None:
         error = "Neither forward nor reverse primers were not identified."
     elif forward_matches is None:
-        error = f"The forward primer was not identified, a reverse primer was found with slide of {reverse_matches["qseqid"][0]}."
+        error = f"The forward primer was not identified, a reverse primer was found with slide of {reverse_matches['qseqid'][0]}."
     elif reverse_matches is None:
-        error = f"The reverse primer was not identified, a forward primer was found with slide of {forward_matches["qseqid"][0]}."
+        error = f"The reverse primer was not identified, a forward primer was found with slide of {forward_matches['qseqid'][0]}."
 
     return primer_pairs_indices, error
 
