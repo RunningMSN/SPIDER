@@ -44,6 +44,8 @@ def extract_sequences(input_tsv, translate, output, separate, upstream, downstre
 					type = "AA"
 					if not seq.lower().startswith("atg"):
 						print(f"WARNING: The sequence for {row['Name']} in {row['Query']} does not start with ATG.", file=sys.stderr)
+					if len(seq) % 3 != 0:
+						print(f"WARNING: The sequence for {row['Name']} in {row['Query']} is not a multiple of 3. This could indicate an error or a frameshift mutation.", file=sys.stderr)
 					seq = translate_seq(seq)
 				# Wrap sequence for nicer output
 				wrapped_seq = wrap_sequence(seq)
@@ -170,6 +172,9 @@ def translate_seq(seq):
 	Output:
 		aa -- Amino acid sequence
 	"""
+	# Trim sequence to ensure it is a multiple of 3
+	seq = seq[0:len(seq)-(len(seq) % 3)]
+
 	bio_object = Seq(seq)
 	return str(bio_object.translate())
 
