@@ -102,9 +102,6 @@ def get_sequence(genome_loc, contig, start, end, strand, upstream, downstream):
 	"""
 	genome = Fasta(genome_loc)
 	contig = str(contig)
-	print(contig)
-	print("---")
-	print(genome[contig])
 	# Use contig length for validating position is in bounds
 	contig_length = len(genome[contig])
 
