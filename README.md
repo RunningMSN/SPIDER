@@ -50,7 +50,7 @@ Search a list of genome assemblies for a sequence in the database `custom_db.fas
 | -p, --primer_size | Length of primers for SPIDER to use. Default is 20 (20nt). | No |
 
 ## Database Shortcuts
-SPIDER includes shortcuts to search common databases. To use a pre-compiled database, use its' keyword in the `-db` argument. 
+SPIDER includes shortcuts to search common databases. To use a pre-compiled database, use its keyword in the `-db` argument. 
 For example `python spider.py -f assembly.fasta -db vfdb` will search `assembly.fasta` for all virulence factors included in the Virulence Factor Database (VFDB). 
 The `-s/--search` keywords can be used to filter the database for genes of interest. For example, searching for `ExoU` in VFDB can be performed
 with `python spider.py -f assembly.fasta -db vfdb -s ExoU`.
