@@ -38,7 +38,7 @@ def extract_sequences(input_tsv, translate, output, separate, upstream, downstre
 				# Grab sequence. Assumes that file is where it was when entered into SPIDER.
 				seq, start_position, end_position = get_sequence(row["Query"], row["Contig"], int(row["Start"]), int(row["End"]), row["Strand"], upstream, downstream)
 				# Create header
-				header = f'>{os.path.basename(row['Query'])}\t{row['Name']}\tcontig={row['Contig']};start={start_position};end={end_position}'
+				header = f">{os.path.basename(row['Query'])}\t{row['Name']}\tcontig={row['Contig']};start={start_position};end={end_position}"
 				# Translate if needed
 				if translate:
 					type = "AA"
